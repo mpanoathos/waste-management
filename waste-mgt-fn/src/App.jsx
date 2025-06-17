@@ -13,6 +13,9 @@ import BinManagement from './pages/companyBinManagement';
 import ResetPassword from './pages/ResetPassword';
 import MapView from './pages/MapView';
 import Analytics from './pages/Analytics';
+import BinStatus from './pages/BinStatus';
+import CompanyManagement from './pages/CompanyManagement';
+import Chat from './pages/Chat';
 
 function App() {
   return (
@@ -30,6 +33,9 @@ function App() {
         <Route path="/reset-password" element={<ResetPassword />} />
         <Route path="/map-view" element={<MapView />} />
         <Route path="/company-analytics" element={<Analytics />} />
+        <Route path="/bin-status" element={<BinStatus />} />
+        <Route path="/company-management" element={<CompanyManagement />} />
+        <Route path="/chat" element={<Chat />} />
       </Routes>
     </Router>
   );

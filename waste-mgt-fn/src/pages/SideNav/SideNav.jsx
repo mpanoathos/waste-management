@@ -1,4 +1,4 @@
-import { FaClock, FaCreditCard, FaTrash, FaSignOutAlt, FaUser, FaHome } from 'react-icons/fa';
+import { FaClock, FaCreditCard, FaTrash, FaSignOutAlt, FaUser, FaHome, FaRobot } from 'react-icons/fa';
 import { Link, useLocation } from 'react-router-dom';
 
 const SideNav = () => {
@@ -14,6 +14,7 @@ const SideNav = () => {
     { path: '/collection-history', icon: <FaClock />, label: 'Collection History' },
     { path: '/payments', icon: <FaCreditCard />, label: 'Payments' },
     { path: '/profile', icon: <FaUser />, label: 'Profile' },
+    { path: '/chat', icon: <FaRobot />, label: 'AI Assistant' },
   ];
 
   return (

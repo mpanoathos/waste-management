@@ -17,10 +17,12 @@ const Signup = () => {
     const [companyName, setCompanyName] = useState("");
     const [companyType, setCompanyType] = useState("");
     const [showPassword, setShowPassword] = useState(false);
+    const [isSubmitting, setIsSubmitting] = useState(false);
     const navigate = useNavigate();
 
     const handleSignup = async (event) => {
         event.preventDefault();
+        setIsSubmitting(true);
         try {
             const userData = {
                 name,
@@ -45,13 +47,23 @@ const Signup = () => {
             });
 
             const data = await res.json();
-            if (!res.ok) throw new Error(data.error || "Signup failed.");
-            toast.success("Signup successful! Please login."); // Show success toast
-            setTimeout(() => {
-                navigate("/"); // Redirect to login page after 2 seconds
-            }, 2000);
+            if (!res.ok) throw new Error(data.message || "Signup failed.");
+
+            if (userRole === "COMPANY") {
+                toast.success("Company registration submitted successfully! Please wait for admin approval.");
+                setTimeout(() => {
+                    navigate("/"); // Redirect to login page after 3 seconds
+                }, 3000);
+            } else {
+                toast.success("Signup successful! Please login.");
+                setTimeout(() => {
+                    navigate("/"); // Redirect to login page after 2 seconds
+                }, 2000);
+            }
         } catch (error) {
-            toast.error("Something went wrong."); // Show error toast
+            toast.error(error.message || "Something went wrong.");
+        } finally {
+            setIsSubmitting(false);
         }
     };
 
@@ -270,9 +282,14 @@ const Signup = () => {
 
                         <button
                             type="submit"
-                            className="w-full bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition transform hover:scale-[1.02]"
+                            disabled={isSubmitting}
+                            className={`w-full py-3 px-4 rounded-lg text-white font-medium transition-colors ${
+                                isSubmitting
+                                    ? 'bg-blue-400 cursor-not-allowed'
+                                    : 'bg-blue-600 hover:bg-blue-700'
+                            }`}
                         >
-                            Create Account
+                            {isSubmitting ? 'Signing up...' : 'Sign Up'}
                         </button>
 
                         <p className="text-center text-gray-600">

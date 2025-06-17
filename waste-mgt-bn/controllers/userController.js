@@ -7,7 +7,7 @@ const { AppError, handleError } = require('../utils/errorHandler');
 const crypto = require('crypto');
 
 exports.registerUser = async (req, res) => {
-    const { name, email, password,role } = req.body;
+    const { name, email, password, role } = req.body;
   
     try {
       const hashedPassword = await bcrypt.hash(password, 10);
@@ -17,27 +17,33 @@ exports.registerUser = async (req, res) => {
           name,
           email,
           password: hashedPassword,
-          role
+          role,
+          approvalStatus: role === 'COMPANY' ? 'PENDING' : 'APPROVED'
         },
       });
       
-    // 2. Create a default bin for this user
-    await prisma.bin.create({
-      data: {
-        location: 'Kigali',
-        status: 'EMPTY',
-        fillLevel: 0,
-        type: 'ORGANIC',
-        userId: user.id
-      },
-    });
+      // Only create bin for non-company users
+      if (role !== 'COMPANY') {
+        await prisma.bin.create({
+          data: {
+            location: 'Kigali',
+            status: 'EMPTY',
+            fillLevel: 0,
+            type: 'ORGANIC',
+            userId: user.id
+          },
+        });
+      }
   
-      res.status(201).json({ message: "User registered", user });
+      res.status(201).json({ 
+        message: role === 'COMPANY' ? "Company registration submitted for approval" : "User registered", 
+        user 
+      });
     } catch (error) {
       console.error(error);
       res.status(400).json({ message: "Registration failed", error });
     }
-  };
+};
   
 
 exports.loginUser = async (req, res) => {
@@ -49,6 +55,14 @@ exports.loginUser = async (req, res) => {
 
     const isValid = await bcrypt.compare(password, user.password);
     if (!isValid) return res.status(401).json({ message: 'Invalid credentials' });
+
+    // Check if company user is approved
+    if (user.role === 'COMPANY' && user.approvalStatus !== 'APPROVED') {
+      return res.status(403).json({ 
+        message: 'Your company account is pending approval. Please wait for admin approval.',
+        approvalStatus: user.approvalStatus
+      });
+    }
 
     const token = jwt.sign(
       { 
@@ -375,5 +389,120 @@ exports.getUserCollectionHistory = async (req, res) => {
     res.status(200).json({ history });
   } catch (error) {
     handleError(error, res);
+  }
+};
+
+exports.updateUserProfile = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const {
+      name,
+      email,
+      phoneNumber,
+      address,
+      district,
+      sector,
+      cell,
+      companyName,
+      companyType
+    } = req.body;
+
+    // Validate required fields
+    if (!name || !email) {
+      return res.status(400).json({ message: 'Name and email are required' });
+    }
+
+    // Check if email is already taken by another user
+    const existingUser = await prisma.user.findFirst({
+      where: {
+        email: email.toLowerCase(),
+        id: { not: userId }
+      }
+    });
+
+    if (existingUser) {
+      return res.status(400).json({ message: 'Email is already taken' });
+    }
+
+    // Update user profile
+    const updatedUser = await prisma.user.update({
+      where: { id: userId },
+      data: {
+        name,
+        email: email.toLowerCase(),
+        phoneNumber,
+        address,
+        district,
+        sector,
+        cell,
+        ...(req.user.role === 'COMPANY' && {
+          companyName,
+          companyType
+        })
+      }
+    });
+
+    // Remove sensitive information before sending response
+    const { password, ...userWithoutPassword } = updatedUser;
+
+    res.status(200).json({
+      message: 'Profile updated successfully',
+      user: userWithoutPassword
+    });
+  } catch (error) {
+    console.error('Error updating profile:', error);
+    res.status(500).json({
+      message: 'Failed to update profile',
+      error: error.message
+    });
+  }
+};
+
+// Add new function to handle company approvals
+exports.approveCompany = async (req, res) => {
+  try {
+    const { userId, status } = req.body;
+    
+    if (!['APPROVED', 'REJECTED'].includes(status)) {
+      return res.status(400).json({ message: 'Invalid approval status' });
+    }
+
+    const user = await prisma.user.update({
+      where: { id: userId },
+      data: { approvalStatus: status }
+    });
+
+    res.status(200).json({ 
+      message: `Company ${status.toLowerCase()} successfully`,
+      user 
+    });
+  } catch (error) {
+    res.status(500).json({ message: 'Failed to update company status', error });
+  }
+};
+
+// Add new function to get pending companies
+exports.getPendingCompanies = async (req, res) => {
+  try {
+    const pendingCompanies = await prisma.user.findMany({
+      where: {
+        role: 'COMPANY',
+        approvalStatus: 'PENDING'
+      },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        companyName: true,
+        companyType: true,
+        phoneNumber: true,
+        address: true,
+        createdAt: true
+      }
+    });
+
+    res.status(200).json({ companies: pendingCompanies });
+  } catch (error) {
+    res.status(500).json({ message: 'Failed to fetch pending companies', error });
   }
 };

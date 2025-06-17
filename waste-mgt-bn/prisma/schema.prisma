@@ -13,12 +13,21 @@ model User {
   email     String   @unique
   password  String
   role      Role     @default(USER)
+  phoneNumber String?
+  address   String?
+  district  String?
+  sector    String?
+  cell      String?
+  companyName String?
+  companyType String?
+  approvalStatus ApprovalStatus @default(PENDING)
   bins      Bin[]    // user can own multiple bins
   payments  Payment[]
   collections CollectionHistory[]
   resetToken String?
   resetTokenExpiry DateTime?
   createdAt DateTime @default(now())
+  chatMessages ChatMessage[]
 }
 
 model Bin {
@@ -66,6 +75,15 @@ model CollectionHistory {
   notes     String?
 }
 
+model ChatMessage {
+    id        Int      @id @default(autoincrement())
+    content   String
+    sender    String   // 'USER' or 'AI'
+    createdAt DateTime @default(now())
+    userId    Int
+    user      User     @relation(fields: [userId], references: [id])
+}
+
 enum Role {
   ADMIN
   USER
@@ -87,4 +105,10 @@ enum PaymentStatus {
   PENDING
   SUCCESS
   FAILED
+}
+
+enum ApprovalStatus {
+  PENDING
+  APPROVED
+  REJECTED
 }
