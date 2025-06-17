@@ -15,6 +15,35 @@ const Chatbot = () => {
         scrollToBottom();
     }, [messages]);
 
+    useEffect(() => {
+        const fetchChatHistory = async () => {
+            try {
+                const token = localStorage.getItem('token');
+                const response = await fetch('http://localhost:5000/chat/history', {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+
+                if (!response.ok) {
+                    throw new Error('Failed to fetch chat history');
+                }
+
+                const data = await response.json();
+                const formattedMessages = data.map(msg => ({
+                    text: msg.content,
+                    sender: msg.sender.toLowerCase(),
+                    timestamp: msg.createdAt
+                }));
+                setMessages(formattedMessages);
+            } catch (error) {
+                console.error('Error fetching chat history:', error);
+            }
+        };
+
+        fetchChatHistory();
+    }, []);
+
     const handleSubmit = async (e) => {
         e.preventDefault();
         if (!input.trim()) return;
@@ -65,43 +94,43 @@ const Chatbot = () => {
     };
 
     return (
-        <div className="flex flex-col h-[600px] bg-white rounded-lg shadow-lg">
-            {/* Chat Header */}
-            <div className="p-4 border-b border-gray-200 bg-blue-600 text-white rounded-t-lg">
-                <div className="flex items-center space-x-2">
-                    <FaRobot className="text-xl" />
-                    <h2 className="text-lg font-semibold">AI Assistant</h2>
-                </div>
-            </div>
-
+        <div className="flex flex-col h-[600px] bg-white rounded-lg">
             {/* Messages Container */}
             <div className="flex-1 overflow-y-auto p-4 space-y-4">
-                {messages.map((message, index) => (
-                    <div
-                        key={index}
-                        className={`flex ${message.sender === 'user' ? 'justify-end' : 'justify-start'}`}
-                    >
-                        <div
-                            className={`max-w-[70%] rounded-lg p-3 ${
-                                message.sender === 'user'
-                                    ? 'bg-blue-600 text-white'
-                                    : 'bg-gray-100 text-gray-800'
-                            }`}
-                        >
-                            <div className="flex items-center space-x-2 mb-1">
-                                {message.sender === 'bot' ? (
-                                    <FaRobot className="text-gray-500" />
-                                ) : (
-                                    <FaUser className="text-blue-200" />
-                                )}
-                                <span className="text-xs opacity-75">
-                                    {new Date(message.timestamp).toLocaleTimeString()}
-                                </span>
-                            </div>
-                            <p className="text-sm">{message.text}</p>
-                        </div>
+                {messages.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center h-full text-gray-500">
+                        <FaRobot className="text-4xl mb-4 text-gray-400" />
+                        <p className="text-center">Start a conversation with the AI assistant</p>
+                        <p className="text-sm text-gray-400 mt-2">Ask about waste management, recycling, or sustainability</p>
                     </div>
-                ))}
+                ) : (
+                    messages.map((message, index) => (
+                        <div
+                            key={index}
+                            className={`flex ${message.sender === 'user' ? 'justify-end' : 'justify-start'}`}
+                        >
+                            <div
+                                className={`max-w-[70%] rounded-lg p-3 ${
+                                    message.sender === 'user'
+                                        ? 'bg-gray-800 text-white'
+                                        : 'bg-gray-100 text-gray-800'
+                                }`}
+                            >
+                                <div className="flex items-center space-x-2 mb-1">
+                                    {message.sender === 'bot' ? (
+                                        <FaRobot className="text-gray-500" />
+                                    ) : (
+                                        <FaUser className="text-gray-300" />
+                                    )}
+                                    <span className="text-xs opacity-75">
+                                        {new Date(message.timestamp).toLocaleTimeString()}
+                                    </span>
+                                </div>
+                                <p className="text-sm whitespace-pre-wrap">{message.text}</p>
+                            </div>
+                        </div>
+                    ))
+                )}
                 {isLoading && (
                     <div className="flex justify-start">
                         <div className="bg-gray-100 rounded-lg p-3">
@@ -120,13 +149,13 @@ const Chatbot = () => {
                         value={input}
                         onChange={(e) => setInput(e.target.value)}
                         placeholder="Type your message..."
-                        className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-transparent transition-all duration-200"
                         disabled={isLoading}
                     />
                     <button
                         type="submit"
                         disabled={isLoading || !input.trim()}
-                        className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="px-4 py-2 bg-gray-800 text-white rounded-lg hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
                     >
                         <FaPaperPlane />
                     </button>

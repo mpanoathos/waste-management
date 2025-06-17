@@ -14,6 +14,8 @@ const binRoute = require('./routes/binRoute');
 const sensorRoute = require('./routes/sensorRoute');
 const setupSensor = require('./utils/sensorUtils');
 const paymentRoutes = require('./routes/paymentRoutes');
+const adminRoutes = require('./routes/adminRoutes');
+const chatRoutes = require('./routes/chatRoutes');
 
 // Log environment variables (development only)
 if (process.env.NODE_ENV === 'development') {
@@ -40,6 +42,8 @@ app.use('/user', userRoutes);
 app.use('/bin', binRoute);
 app.use('/sensor', sensorRoute);
 app.use('/api/payments', paymentRoutes);
+app.use('/admin', adminRoutes);
+app.use('/chat', chatRoutes);
 
 // Sample route
 app.get('/', (req, res) => {
@@ -98,4 +102,6 @@ server.listen(PORT, () => {
   console.log('- POST /user/login');
   console.log('- GET /user/profile');
   console.log('- GET /user/all');
+  console.log('- POST /chat');
+  console.log('- GET /chat/history');
 });

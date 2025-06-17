@@ -3,6 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import { FaEnvelope, FaLock, FaEye, FaEyeSlash } from "react-icons/fa";
+import wasteManagementImage from '../assets/images/waste-management-segregation-bins.jpg';
 
 const Login = () => {
     const [email, setEmail] = useState("");
@@ -87,24 +88,45 @@ const Login = () => {
     return (
         <div className="min-h-screen flex">
             {/* Left Section - Welcome Message */}
-            <div className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-blue-600 to-blue-800 text-white p-12 flex-col justify-center items-center relative overflow-hidden">
-                <div className="absolute inset-0 bg-black opacity-20"></div>
-                <div className="relative z-10 text-center">
-                    <h1 className="text-4xl font-bold mb-6">Welcome Back</h1>
-                    <p className="text-lg text-blue-100">
+            <div 
+                className="hidden lg:flex lg:w-1/2 text-gray-900 p-12 flex-col justify-center items-center relative overflow-hidden transition-all duration-500 hover:shadow-2xl"
+                style={{
+                    backgroundImage: `linear-gradient(rgba(0, 0, 0, 0.1), rgba(0, 0, 0, 0.1)), linear-gradient(rgba(255, 255, 255, 0.7), rgba(255, 255, 255, 0.7)), url(${wasteManagementImage})`,
+                    backgroundSize: 'contain',
+                    backgroundPosition: 'center',
+                    backgroundRepeat: 'no-repeat',
+                    backgroundColor: '#f8f8f8',
+                    minHeight: '100vh',
+                    boxShadow: 'inset 0 0 50px rgba(0, 0, 0, 0.15)'
+                }}
+            >
+                <div className="relative z-10 text-center max-w-lg transform transition-all duration-500 hover:scale-105">
+                    <div className="mb-8">
+                        <div className="w-20 h-1 bg-gray-800 mx-auto mb-4 rounded-full"></div>
+                        <h1 className="text-5xl font-bold mb-6 text-gray-900 drop-shadow-lg tracking-wide">
+                            Waste Collection System
+                        </h1>
+                        <div className="w-20 h-1 bg-gray-800 mx-auto mb-4 rounded-full"></div>
+                    </div>
+                    <p className="text-xl text-gray-800 drop-shadow-md leading-relaxed">
                         Sign in to continue managing waste efficiently.
                     </p>
+                    <div className="mt-8 flex justify-center space-x-4">
+                        <div className="w-3 h-3 bg-gray-800 rounded-full animate-pulse"></div>
+                        <div className="w-3 h-3 bg-gray-800 rounded-full animate-pulse" style={{ animationDelay: '0.2s' }}></div>
+                        <div className="w-3 h-3 bg-gray-800 rounded-full animate-pulse" style={{ animationDelay: '0.4s' }}></div>
+                    </div>
                 </div>
             </div>
 
             {/* Right Section - Login Form */}
-            <div className="w-full lg:w-1/2 p-8 lg:p-12 flex items-center justify-center">
+            <div className="w-full lg:w-1/2 p-8 lg:p-12 flex items-center justify-center bg-gradient-to-br from-gray-50 to-gray-100">
                 <div className="w-full max-w-md">
                     <div className="text-center mb-8">
-                        <h2 className="text-3xl font-bold text-gray-800">Sign In</h2>
-                        <p className="text-gray-600 mt-2">
+                        <h2 className="text-3xl font-bold text-gray-900 mb-2">Sign In</h2>
+                        <p className="text-gray-700">
                             Don't have an account?{" "}
-                            <Link to="/signup" className="text-blue-600 hover:text-blue-700">
+                            <Link to="/signup" className="text-gray-900 hover:text-gray-700 font-medium transition-colors duration-200">
                                 Sign up
                             </Link>
                         </p>
@@ -112,9 +134,9 @@ const Login = () => {
 
                     <form onSubmit={handleLogin} className="space-y-6">
                         <div className="space-y-4">
-                            <div className="relative">
+                            <div className="relative group">
                                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                    <FaEnvelope className="h-5 w-5 text-gray-400" />
+                                    <FaEnvelope className="h-5 w-5 text-gray-600 group-hover:text-gray-900 transition-colors duration-200" />
                                 </div>
                                 <input
                                     type="email"
@@ -122,13 +144,13 @@ const Login = () => {
                                     value={email}
                                     onChange={(e) => setEmail(e.target.value)}
                                     required
-                                    className="w-full pl-10 pr-3 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+                                    className="w-full pl-10 pr-3 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-transparent transition-all duration-200 hover:border-gray-400 text-gray-900 placeholder-gray-500"
                                 />
                             </div>
 
-                            <div className="relative">
+                            <div className="relative group">
                                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                    <FaLock className="h-5 w-5 text-gray-400" />
+                                    <FaLock className="h-5 w-5 text-gray-600 group-hover:text-gray-900 transition-colors duration-200" />
                                 </div>
                                 <input
                                     type={showPassword ? "text" : "password"}
@@ -136,17 +158,17 @@ const Login = () => {
                                     value={password}
                                     onChange={(e) => setPassword(e.target.value)}
                                     required
-                                    className="w-full pl-10 pr-10 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+                                    className="w-full pl-10 pr-10 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-transparent transition-all duration-200 hover:border-gray-400 text-gray-900 placeholder-gray-500"
                                 />
                                 <button
                                     type="button"
                                     onClick={() => setShowPassword(!showPassword)}
-                                    className="absolute inset-y-0 right-0 pr-3 flex items-center"
+                                    className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-600 hover:text-gray-900 transition-colors duration-200"
                                 >
                                     {showPassword ? (
-                                        <FaEyeSlash className="h-5 w-5 text-gray-400" />
+                                        <FaEyeSlash className="h-5 w-5" />
                                     ) : (
-                                        <FaEye className="h-5 w-5 text-gray-400" />
+                                        <FaEye className="h-5 w-5" />
                                     )}
                                 </button>
                             </div>
@@ -156,7 +178,7 @@ const Login = () => {
                             <button
                                 type="button"
                                 onClick={() => setShowForgotPasswordModal(true)}
-                                className="text-sm text-blue-600 hover:text-blue-700"
+                                className="text-sm text-gray-900 hover:text-gray-700 font-medium transition-colors duration-200"
                             >
                                 Forgot password?
                             </button>
@@ -165,10 +187,10 @@ const Login = () => {
                         <button
                             type="submit"
                             disabled={isLoading}
-                            className={`w-full py-3 px-4 rounded-lg text-white font-medium transition-colors ${
+                            className={`w-full py-3 px-4 rounded-lg text-white font-medium transition-all duration-200 transform hover:scale-[1.02] ${
                                 isLoading
-                                    ? 'bg-blue-400 cursor-not-allowed'
-                                    : 'bg-blue-600 hover:bg-blue-700'
+                                    ? 'bg-gray-400 cursor-not-allowed'
+                                    : 'bg-gray-900 hover:bg-gray-800 shadow-lg hover:shadow-xl'
                             }`}
                         >
                             {isLoading ? 'Signing in...' : 'Sign In'}
@@ -179,34 +201,39 @@ const Login = () => {
 
             {/* Forgot Password Modal */}
             {showForgotPasswordModal && (
-                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4">
-                    <div className="bg-white rounded-lg p-6 max-w-md w-full">
-                        <h3 className="text-xl font-bold mb-4">Reset Password</h3>
-                        <p className="text-gray-600 mb-4">
-                            Enter your email address and we'll send you a link to reset your password.
-                        </p>
-                        <form onSubmit={handleForgotPassword}>
-                            <div className="mb-4">
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+                    <div className="bg-white rounded-xl p-8 max-w-md w-full transform transition-all duration-300 scale-100">
+                        <div className="text-center mb-6">
+                            <h3 className="text-2xl font-bold text-gray-900 mb-2">Reset Password</h3>
+                            <p className="text-gray-600">
+                                Enter your email address and we'll send you a link to reset your password.
+                            </p>
+                        </div>
+                        <form onSubmit={handleForgotPassword} className="space-y-6">
+                            <div className="relative group">
+                                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                    <FaEnvelope className="h-5 w-5 text-gray-600 group-hover:text-gray-900 transition-colors duration-200" />
+                                </div>
                                 <input
                                     type="email"
                                     placeholder="Email address"
                                     value={forgotPasswordEmail}
                                     onChange={(e) => setForgotPasswordEmail(e.target.value)}
                                     required
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                    className="w-full pl-10 pr-3 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-transparent transition-all duration-200 hover:border-gray-400 text-gray-900 placeholder-gray-500"
                                 />
                             </div>
                             <div className="flex space-x-4">
                                 <button
                                     type="submit"
-                                    className="flex-1 bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition"
+                                    className="flex-1 bg-gray-900 text-white py-3 px-4 rounded-lg font-medium transition-all duration-200 transform hover:scale-[1.02] hover:bg-gray-800 shadow-lg hover:shadow-xl"
                                 >
                                     Send Reset Link
                                 </button>
                                 <button
                                     type="button"
                                     onClick={() => setShowForgotPasswordModal(false)}
-                                    className="flex-1 bg-gray-200 text-gray-800 py-3 rounded-lg hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 transition"
+                                    className="flex-1 bg-gray-100 text-gray-900 py-3 px-4 rounded-lg font-medium transition-all duration-200 transform hover:scale-[1.02] hover:bg-gray-200 shadow hover:shadow-md"
                                 >
                                     Cancel
                                 </button>

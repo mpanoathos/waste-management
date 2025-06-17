@@ -28,7 +28,7 @@ function App() {
         <Route path="/collection-history" element={<CollectionHistory />} />
         <Route path="/payments" element={<Payment />} />
         <Route path="/company-dashboard" element={<CompanyDashboard />} />
-        <Route path="/admin-dashboard" element={< AdminDashboard/>} />
+        <Route path="/admin-dashboard" element={<AdminDashboard />} />
         <Route path="/bin-management" element={<BinManagement />} />
         <Route path="/reset-password" element={<ResetPassword />} />
         <Route path="/map-view" element={<MapView />} />

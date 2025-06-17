@@ -3,6 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css"; // Import toastify CSS
 import { FaUser, FaEnvelope, FaLock, FaPhone, FaMapMarkerAlt, FaBuilding, FaEye, FaEyeSlash } from "react-icons/fa";
+import wasteManagementImage from '../assets/images/waste-management-segregation-bins.jpg';
 
 const Signup = () => {
     const [email, setEmail] = useState("");
@@ -15,7 +16,6 @@ const Signup = () => {
     const [sector, setSector] = useState("");
     const [cell, setCell] = useState("");
     const [companyName, setCompanyName] = useState("");
-    const [companyType, setCompanyType] = useState("");
     const [showPassword, setShowPassword] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const navigate = useNavigate();
@@ -35,8 +35,7 @@ const Signup = () => {
                 sector,
                 cell,
                 ...(userRole === "COMPANY" && {
-                    companyName,
-                    companyType
+                    companyName
                 })
             };
 
@@ -70,55 +69,55 @@ const Signup = () => {
     return (
         <div className="min-h-screen flex">
             {/* Left Section - Welcome Message */}
-            <div className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-blue-600 to-blue-800 text-white p-12 flex-col justify-center items-center relative overflow-hidden">
-                <div className="absolute inset-0 bg-black opacity-20"></div>
-                <div className="relative z-10 text-center">
-                    <h1 className="text-5xl font-bold mb-6 animate-fade-in">Smart Collection System</h1>
-                    <p className="text-xl mb-8 text-blue-100 animate-fade-in-delay">
-                        Join our community and help make the environment cleaner and greener with our smart waste management tools.
+            <div 
+                className="hidden lg:flex lg:w-1/2 text-gray-900 p-12 flex-col justify-center items-center relative overflow-hidden transition-all duration-500 hover:shadow-2xl"
+                style={{
+                    backgroundImage: `linear-gradient(rgba(0, 0, 0, 0.1), rgba(0, 0, 0, 0.1)), linear-gradient(rgba(255, 255, 255, 0.7), rgba(255, 255, 255, 0.7)), url(${wasteManagementImage})`,
+                    backgroundSize: 'contain',
+                    backgroundPosition: 'center',
+                    backgroundRepeat: 'no-repeat',
+                    backgroundColor: '#f8f8f8',
+                    minHeight: '100vh',
+                    boxShadow: 'inset 0 0 50px rgba(0, 0, 0, 0.15)'
+                }}
+            >
+                <div className="relative z-10 text-center max-w-lg transform transition-all duration-500 hover:scale-105">
+                    <div className="mb-8">
+                        <div className="w-20 h-1 bg-gray-800 mx-auto mb-4 rounded-full"></div>
+                        <h1 className="text-5xl font-bold mb-6 text-gray-900 drop-shadow-lg tracking-wide">
+                            Waste Collection System
+                        </h1>
+                        <div className="w-20 h-1 bg-gray-800 mx-auto mb-4 rounded-full"></div>
+                    </div>
+                    <p className="text-xl text-gray-800 drop-shadow-md leading-relaxed">
+                        Join our community and help make the environment cleaner and greener.
                     </p>
-                    <div className="space-y-4 animate-fade-in-delay-2">
-                        <div className="flex items-center space-x-3">
-                            <div className="w-12 h-12 bg-blue-500 rounded-full flex items-center justify-center">
-                                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
-                                </svg>
-                            </div>
-                            <span>Easy registration process</span>
-                        </div>
-                        <div className="flex items-center space-x-3">
-                            <div className="w-12 h-12 bg-blue-500 rounded-full flex items-center justify-center">
-                                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path>
-                                </svg>
-                            </div>
-                            <span>Secure and reliable service</span>
-                        </div>
-                        <div className="flex items-center space-x-3">
-                            <div className="w-12 h-12 bg-blue-500 rounded-full flex items-center justify-center">
-                                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
-                                </svg>
-                            </div>
-                            <span>Efficient waste management</span>
-                        </div>
+                    <div className="mt-8 flex justify-center space-x-4">
+                        <div className="w-3 h-3 bg-gray-800 rounded-full animate-pulse"></div>
+                        <div className="w-3 h-3 bg-gray-800 rounded-full animate-pulse" style={{ animationDelay: '0.2s' }}></div>
+                        <div className="w-3 h-3 bg-gray-800 rounded-full animate-pulse" style={{ animationDelay: '0.4s' }}></div>
                     </div>
                 </div>
             </div>
 
             {/* Right Section - Signup Form */}
-            <div className="w-full lg:w-1/2 flex items-center justify-center bg-gray-50 p-8">
+            <div className="w-full lg:w-1/2 p-8 lg:p-12 flex items-center justify-center bg-gradient-to-br from-gray-50 to-gray-100">
                 <div className="w-full max-w-md">
                     <div className="text-center mb-8">
-                        <h2 className="text-3xl font-bold text-gray-800 mb-2">Create Account</h2>
-                        <p className="text-gray-600">Join our waste management community</p>
+                        <h2 className="text-3xl font-bold text-gray-900 mb-2">Create Account</h2>
+                        <p className="text-gray-700">
+                            Already have an account?{" "}
+                            <Link to="/" className="text-gray-900 hover:text-gray-700 font-medium transition-colors duration-200">
+                                Sign in
+                            </Link>
+                        </p>
                     </div>
 
                     <form onSubmit={handleSignup} className="space-y-6">
                         <div className="space-y-4">
-                            <div className="relative">
+                            <div className="relative group">
                                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                    <FaUser className="h-5 w-5 text-gray-400" />
+                                    <FaUser className="h-5 w-5 text-gray-600 group-hover:text-gray-900 transition-colors duration-200" />
                                 </div>
                                 <input
                                     type="text"
@@ -126,13 +125,13 @@ const Signup = () => {
                                     value={name}
                                     onChange={(e) => setName(e.target.value)}
                                     required
-                                    className="w-full pl-10 pr-3 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+                                    className="w-full pl-10 pr-3 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-transparent transition-all duration-200 hover:border-gray-400 text-gray-900 placeholder-gray-500"
                                 />
                             </div>
 
-                            <div className="relative">
+                            <div className="relative group">
                                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                    <FaEnvelope className="h-5 w-5 text-gray-400" />
+                                    <FaEnvelope className="h-5 w-5 text-gray-600 group-hover:text-gray-900 transition-colors duration-200" />
                                 </div>
                                 <input
                                     type="email"
@@ -140,13 +139,13 @@ const Signup = () => {
                                     value={email}
                                     onChange={(e) => setEmail(e.target.value)}
                                     required
-                                    className="w-full pl-10 pr-3 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+                                    className="w-full pl-10 pr-3 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-transparent transition-all duration-200 hover:border-gray-400 text-gray-900 placeholder-gray-500"
                                 />
                             </div>
 
-                            <div className="relative">
+                            <div className="relative group">
                                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                    <FaLock className="h-5 w-5 text-gray-400" />
+                                    <FaLock className="h-5 w-5 text-gray-600 group-hover:text-gray-900 transition-colors duration-200" />
                                 </div>
                                 <input
                                     type={showPassword ? "text" : "password"}
@@ -154,24 +153,24 @@ const Signup = () => {
                                     value={password}
                                     onChange={(e) => setPassword(e.target.value)}
                                     required
-                                    className="w-full pl-10 pr-10 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+                                    className="w-full pl-10 pr-10 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-transparent transition-all duration-200 hover:border-gray-400 text-gray-900 placeholder-gray-500"
                                 />
                                 <button
                                     type="button"
                                     onClick={() => setShowPassword(!showPassword)}
-                                    className="absolute inset-y-0 right-0 pr-3 flex items-center"
+                                    className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-600 hover:text-gray-900 transition-colors duration-200"
                                 >
                                     {showPassword ? (
-                                        <FaEyeSlash className="h-5 w-5 text-gray-400 hover:text-gray-600" />
+                                        <FaEyeSlash className="h-5 w-5" />
                                     ) : (
-                                        <FaEye className="h-5 w-5 text-gray-400 hover:text-gray-600" />
+                                        <FaEye className="h-5 w-5" />
                                     )}
                                 </button>
                             </div>
 
-                            <div className="relative">
+                            <div className="relative group">
                                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                    <FaPhone className="h-5 w-5 text-gray-400" />
+                                    <FaPhone className="h-5 w-5 text-gray-600 group-hover:text-gray-900 transition-colors duration-200" />
                                 </div>
                                 <input
                                     type="tel"
@@ -179,21 +178,21 @@ const Signup = () => {
                                     value={phoneNumber}
                                     onChange={(e) => setPhoneNumber(e.target.value)}
                                     required
-                                    className="w-full pl-10 pr-3 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+                                    className="w-full pl-10 pr-3 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-transparent transition-all duration-200 hover:border-gray-400 text-gray-900 placeholder-gray-500"
                                 />
                             </div>
 
-                            <div className="relative">
+                            <div className="relative group">
                                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                    <FaMapMarkerAlt className="h-5 w-5 text-gray-400" />
+                                    <FaMapMarkerAlt className="h-5 w-5 text-gray-600 group-hover:text-gray-900 transition-colors duration-200" />
                                 </div>
                                 <input
                                     type="text"
-                                    placeholder="Address"
+                                    placeholder="KK390ST"
                                     value={address}
                                     onChange={(e) => setAddress(e.target.value)}
                                     required
-                                    className="w-full pl-10 pr-3 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+                                    className="w-full pl-10 pr-3 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-transparent transition-all duration-200 hover:border-gray-400 text-gray-900 placeholder-gray-500"
                                 />
                             </div>
 
@@ -204,7 +203,7 @@ const Signup = () => {
                                     value={district}
                                     onChange={(e) => setDistrict(e.target.value)}
                                     required
-                                    className="w-full px-3 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+                                    className="w-full px-3 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-transparent transition-all duration-200 hover:border-gray-400 text-gray-900 placeholder-gray-500"
                                 />
                                 <input
                                     type="text"
@@ -212,7 +211,7 @@ const Signup = () => {
                                     value={sector}
                                     onChange={(e) => setSector(e.target.value)}
                                     required
-                                    className="w-full px-3 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+                                    className="w-full px-3 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-transparent transition-all duration-200 hover:border-gray-400 text-gray-900 placeholder-gray-500"
                                 />
                                 <input
                                     type="text"
@@ -220,84 +219,55 @@ const Signup = () => {
                                     value={cell}
                                     onChange={(e) => setCell(e.target.value)}
                                     required
-                                    className="w-full px-3 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+                                    className="w-full px-3 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-transparent transition-all duration-200 hover:border-gray-400 text-gray-900 placeholder-gray-500"
                                 />
                             </div>
 
-                            <div className="relative">
+                            <div className="relative group">
                                 <select
                                     value={userRole}
                                     onChange={(e) => setUserRole(e.target.value)}
                                     required
-                                    className="w-full px-3 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition appearance-none bg-white"
+                                    className="w-full px-3 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-transparent transition-all duration-200 hover:border-gray-400 text-gray-900 appearance-none bg-white"
                                 >
                                     <option value="USER">Individual User</option>
                                     <option value="COMPANY">Company</option>
                                 </select>
                                 <div className="absolute inset-y-0 right-0 flex items-center px-2 pointer-events-none">
-                                    <svg className="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <svg className="h-5 w-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path>
                                     </svg>
                                 </div>
                             </div>
 
                             {userRole === "COMPANY" && (
-                                <>
-                                    <div className="relative">
-                                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                            <FaBuilding className="h-5 w-5 text-gray-400" />
-                                        </div>
-                                        <input
-                                            type="text"
-                                            placeholder="Company Name"
-                                            value={companyName}
-                                            onChange={(e) => setCompanyName(e.target.value)}
-                                            required
-                                            className="w-full pl-10 pr-3 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
-                                        />
+                                <div className="relative group">
+                                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                        <FaBuilding className="h-5 w-5 text-gray-600 group-hover:text-gray-900 transition-colors duration-200" />
                                     </div>
-
-                                    <div className="relative">
-                                        <select
-                                            value={companyType}
-                                            onChange={(e) => setCompanyType(e.target.value)}
-                                            required
-                                            className="w-full px-3 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition appearance-none bg-white"
-                                        >
-                                            <option value="">Select Company Type</option>
-                                            <option value="WASTE_COLLECTOR">Waste Collection Company</option>
-                                            <option value="RECYCLING">Recycling Company</option>
-                                            <option value="WASTE_PROCESSOR">Waste Processing Company</option>
-                                            <option value="OTHER">Other</option>
-                                        </select>
-                                        <div className="absolute inset-y-0 right-0 flex items-center px-2 pointer-events-none">
-                                            <svg className="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path>
-                                            </svg>
-                                        </div>
-                                    </div>
-                                </>
+                                    <input
+                                        type="text"
+                                        placeholder="Company Name"
+                                        value={companyName}
+                                        onChange={(e) => setCompanyName(e.target.value)}
+                                        required
+                                        className="w-full pl-10 pr-3 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-transparent transition-all duration-200 hover:border-gray-400 text-gray-900 placeholder-gray-500"
+                                    />
+                                </div>
                             )}
                         </div>
 
                         <button
                             type="submit"
                             disabled={isSubmitting}
-                            className={`w-full py-3 px-4 rounded-lg text-white font-medium transition-colors ${
+                            className={`w-full py-3 px-4 rounded-lg text-white font-medium transition-all duration-200 transform hover:scale-[1.02] ${
                                 isSubmitting
-                                    ? 'bg-blue-400 cursor-not-allowed'
-                                    : 'bg-blue-600 hover:bg-blue-700'
+                                    ? 'bg-gray-400 cursor-not-allowed'
+                                    : 'bg-gray-900 hover:bg-gray-800 shadow-lg hover:shadow-xl'
                             }`}
                         >
-                            {isSubmitting ? 'Signing up...' : 'Sign Up'}
+                            {isSubmitting ? 'Creating Account...' : 'Create Account'}
                         </button>
-
-                        <p className="text-center text-gray-600">
-                            Already have an account?{" "}
-                            <Link to="/" className="text-blue-600 hover:text-blue-800 font-medium transition">
-                                Sign in
-                            </Link>
-                        </p>
                     </form>
                 </div>
             </div>

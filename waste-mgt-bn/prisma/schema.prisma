@@ -18,7 +18,7 @@ model User {
   district  String?
   sector    String?
   cell      String?
-  companyName String?
+  companyName String? @default("")
   companyType String?
   approvalStatus ApprovalStatus @default(PENDING)
   bins      Bin[]    // user can own multiple bins
@@ -28,6 +28,8 @@ model User {
   resetTokenExpiry DateTime?
   createdAt DateTime @default(now())
   chatMessages ChatMessage[]
+
+  @@assert(role != COMPANY || companyName != "", "Company name is required for companies")
 }
 
 model Bin {

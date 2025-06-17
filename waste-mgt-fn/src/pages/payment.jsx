@@ -4,6 +4,70 @@ import { toast } from 'react-toastify';
 import axios from 'axios';
 import LoadingSpinner from '../components/LoadingSpinner';
 import SideNav from './SideNav/SideNav';
+import { FaDownload } from 'react-icons/fa';
+import { PDFDownloadLink, Document, Page, Text, View, StyleSheet } from '@react-pdf/renderer';
+
+// PDF Styles
+const styles = StyleSheet.create({
+  page: {
+    padding: 30,
+  },
+  title: {
+    fontSize: 24,
+    marginBottom: 20,
+    textAlign: 'center',
+  },
+  table: {
+    display: 'table',
+    width: 'auto',
+    borderStyle: 'solid',
+    borderWidth: 1,
+    borderColor: '#bfbfbf',
+  },
+  tableRow: {
+    flexDirection: 'row',
+  },
+  tableHeader: {
+    backgroundColor: '#f0f0f0',
+  },
+  tableCell: {
+    padding: 5,
+    borderWidth: 1,
+    borderColor: '#bfbfbf',
+  },
+  headerCell: {
+    fontWeight: 'bold',
+  },
+});
+
+// PDF Document Component
+const PaymentHistoryPDF = ({ payments }) => (
+  <Document>
+    <Page size="A4" style={styles.page}>
+      <Text style={styles.title}>Payment History Report</Text>
+      <View style={styles.table}>
+        <View style={[styles.tableRow, styles.tableHeader]}>
+          <Text style={[styles.tableCell, styles.headerCell, { width: '30%' }]}>Date</Text>
+          <Text style={[styles.tableCell, styles.headerCell, { width: '30%' }]}>Amount</Text>
+          <Text style={[styles.tableCell, styles.headerCell, { width: '40%' }]}>Status</Text>
+        </View>
+        {payments.map((payment) => (
+          <View key={payment.id} style={styles.tableRow}>
+            <Text style={[styles.tableCell, { width: '30%' }]}>
+              {new Date(payment.createdAt).toLocaleDateString()}
+            </Text>
+            <Text style={[styles.tableCell, { width: '30%' }]}>
+              RWF {payment.amount.toFixed(2)}
+            </Text>
+            <Text style={[styles.tableCell, { width: '40%' }]}>
+              {payment.status}
+            </Text>
+          </View>
+        ))}
+      </View>
+    </Page>
+  </Document>
+);
 
 const Payment = () => {
     const navigate = useNavigate();
@@ -143,7 +207,7 @@ const Payment = () => {
                                 <button
                                     type="submit"
                                     disabled={loading}
-                                    className="w-full bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50"
+                                    className="w-full bg-gray-800 text-white py-2 px-4 rounded-lg hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 disabled:opacity-50"
                                 >
                                     {loading ? <LoadingSpinner size="small" /> : 'Pay Now'}
                                 </button>
@@ -152,7 +216,23 @@ const Payment = () => {
 
                         {/* Payment History */}
                         <div className="bg-white rounded-lg shadow-md p-6">
-                            <h2 className="text-xl font-semibold mb-4">Payment History</h2>
+                            <div className="flex justify-between items-center mb-4">
+                                <h2 className="text-xl font-semibold">Payment History</h2>
+                                {paymentHistory.length > 0 && (
+                                    <PDFDownloadLink
+                                        document={<PaymentHistoryPDF payments={paymentHistory} />}
+                                        fileName="payment-history.pdf"
+                                        className="flex items-center px-4 py-2 bg-gray-800 text-white rounded-lg hover:bg-gray-700"
+                                    >
+                                        {({ loading }) => (
+                                            <>
+                                                <FaDownload className="mr-2" />
+                                                {loading ? 'Generating...' : 'Download PDF'}
+                                            </>
+                                        )}
+                                    </PDFDownloadLink>
+                                )}
+                            </div>
                             {paymentHistory.length === 0 ? (
                                 <p className="text-gray-500">No payment history available</p>
                             ) : (

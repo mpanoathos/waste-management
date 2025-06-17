@@ -29,7 +29,7 @@ const MapView = () => {
 
   const mapContainerStyle = {
     width: '100%',
-    height: 'calc(100vh - 64px)'
+    height: 'calc(100vh - 200px)'
   };
 
   const mapOptions = {
@@ -119,7 +119,7 @@ const MapView = () => {
   return (
     <div className="flex h-screen bg-gray-100">
       <CompanySideNav />
-      <div className="flex-1 flex flex-col">
+      <div className="flex-1 flex flex-col overflow-hidden">
         <div className="bg-white shadow-sm p-4">
           <div className="flex justify-between items-center">
             <h1 className="text-2xl font-bold text-gray-800">Bin Monitoring Dashboard</h1>
@@ -165,7 +165,7 @@ const MapView = () => {
           </div>
         </div>
         
-        <div className="flex-1 relative">
+        <div className="flex-1 relative overflow-hidden">
           {loading ? (
             <div className="absolute inset-0 flex items-center justify-center bg-gray-100 bg-opacity-75 z-10">
               <LoadingSpinner size="large" />

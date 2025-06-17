@@ -7,7 +7,7 @@ const { AppError, handleError } = require('../utils/errorHandler');
 const crypto = require('crypto');
 
 exports.registerUser = async (req, res) => {
-    const { name, email, password, role } = req.body;
+    const { name, email, password, role, companyName } = req.body;
   
     try {
       const hashedPassword = await bcrypt.hash(password, 10);
@@ -18,6 +18,7 @@ exports.registerUser = async (req, res) => {
           email,
           password: hashedPassword,
           role,
+          companyName: role === 'COMPANY' ? companyName : null,
           approvalStatus: role === 'COMPANY' ? 'PENDING' : 'APPROVED'
         },
       });

@@ -18,10 +18,10 @@ const AdminSideNav = () => {
   ];
 
   return (
-    <div className="w-64 h-screen bg-gradient-to-b from-blue-600 to-blue-800 text-white flex flex-col shadow-lg">
+    <div className="w-64 h-screen bg-gradient-to-br from-gray-800 to-gray-700 text-white flex flex-col shadow-lg">
       {/* Logo and Title */}
-      <div className="p-6 border-b border-blue-500/30">
-        <h2 className="text-2xl font-bold text-center bg-clip-text text-transparent bg-gradient-to-r from-white to-blue-100">
+      <div className="p-6 border-b border-gray-600/30">
+        <h2 className="text-2xl font-bold text-center bg-clip-text text-transparent bg-gradient-to-r from-white to-gray-200">
           Smart Collection
         </h2>
       </div>
@@ -34,8 +34,8 @@ const AdminSideNav = () => {
             to={item.path}
             className={`flex items-center px-4 py-3 rounded-lg transition-all duration-200 ${
               isActive(item.path)
-                ? 'bg-white/20 text-white shadow-lg'
-                : 'text-blue-100 hover:bg-white/10'
+                ? 'bg-white/10 text-white shadow-lg'
+                : 'text-gray-200 hover:bg-white/5 hover:text-white'
             }`}
           >
             <span className="text-lg mr-3">{item.icon}</span>
@@ -45,13 +45,13 @@ const AdminSideNav = () => {
       </nav>
 
       {/* Logout Button */}
-      <div className="p-4 border-t border-blue-500/30">
+      <div className="p-4 border-t border-gray-600/30">
         <button
           onClick={() => {
             localStorage.removeItem('token');
             window.location.href = '/';
           }}
-          className="flex items-center w-full px-4 py-3 text-blue-100 hover:bg-white/10 rounded-lg transition-all duration-200"
+          className="flex items-center w-full px-4 py-3 text-gray-200 hover:bg-white/5 hover:text-white rounded-lg transition-all duration-200"
         >
           <FaSignOutAlt className="text-lg mr-3" />
           <span className="font-medium">Logout</span>

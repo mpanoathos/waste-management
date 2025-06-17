@@ -1,13 +1,23 @@
 const axios = require('axios');
 const crypto = require('crypto');
+const momoConfig = require('../config/momo');
 
 class MomoService {
     constructor() {
-        this.baseUrl = process.env.MOMO_API_URL || 'https://sandbox.momodeveloper.mtn.com';
-        this.subscriptionKey = process.env.MOMO_SUBSCRIPTION_KEY;
-        this.apiKey = process.env.MOMO_API_KEY;
-        this.apiSecret = process.env.MOMO_API_SECRET;
-        this.callbackHost = process.env.MOMO_CALLBACK_HOST || 'http://localhost:5000';
+        this.baseUrl = momoConfig.baseUrl;
+        this.subscriptionKey = momoConfig.subscriptionKey;
+        this.apiKey = momoConfig.apiKey;
+        this.apiSecret = momoConfig.apiSecret;
+        this.callbackHost = momoConfig.callbackHost;
+
+        // Debug log configuration
+        console.log('MoMo Configuration:', {
+            baseUrl: this.baseUrl,
+            subscriptionKey: this.subscriptionKey ? '***exists***' : '***missing***',
+            apiKey: this.apiKey ? '***exists***' : '***missing***',
+            apiSecret: this.apiSecret ? '***exists***' : '***missing***',
+            callbackHost: this.callbackHost
+        });
     }
 
     // Generate a unique reference ID for the transaction
@@ -21,7 +31,7 @@ class MomoService {
         const nonce = crypto.randomBytes(16).toString('hex');
         const signature = this.generateSignature(timestamp, nonce);
 
-        return {
+        const headers = {
             'Authorization': `Bearer ${signature}`,
             'X-Reference-Id': this.generateReferenceId(),
             'X-Timestamp': timestamp,
@@ -29,11 +39,29 @@ class MomoService {
             'Ocp-Apim-Subscription-Key': this.subscriptionKey,
             'Content-Type': 'application/json'
         };
+
+        // Debug log headers (without sensitive data)
+        console.log('Generated Headers:', {
+            'X-Reference-Id': headers['X-Reference-Id'],
+            'X-Timestamp': headers['X-Timestamp'],
+            'X-Nonce': headers['X-Nonce'],
+            'Ocp-Apim-Subscription-Key': '***hidden***',
+            'Authorization': '***hidden***'
+        });
+
+        return headers;
     }
 
     // Generate the signature for authentication
     generateSignature(timestamp, nonce) {
         const message = `${this.apiKey}&${timestamp}&${nonce}`;
+        console.log('Signature Generation:', {
+            message: message,
+            apiKey: this.apiKey ? '***exists***' : '***missing***',
+            timestamp: timestamp,
+            nonce: nonce
+        });
+
         return crypto.createHmac('sha256', this.apiSecret)
             .update(message)
             .digest('base64');
@@ -48,7 +76,7 @@ class MomoService {
 
             const payload = {
                 amount: amount.toString(),
-                currency: 'EUR',
+                currency: momoConfig.currency,
                 externalId: referenceId,
                 payer: {
                     partyIdType: 'MSISDN',
@@ -58,11 +86,26 @@ class MomoService {
                 payeeNote: description
             };
 
+            console.log('Initiating MoMo payment with payload:', {
+                ...payload,
+                headers: {
+                    ...headers,
+                    'Ocp-Apim-Subscription-Key': '***hidden***',
+                    'Authorization': '***hidden***'
+                }
+            });
+
             const response = await axios.post(
                 `${this.baseUrl}/collection/v1_0/requesttopay`,
                 payload,
                 { headers }
             );
+
+            console.log('MoMo API Response:', {
+                status: response.status,
+                statusText: response.statusText,
+                data: response.data
+            });
 
             return {
                 referenceId,
@@ -70,7 +113,25 @@ class MomoService {
                 message: 'Payment request sent successfully'
             };
         } catch (error) {
-            console.error('MoMo payment request failed:', error.response?.data || error.message);
+            console.error('MoMo payment request failed:', {
+                error: error.response?.data || error.message,
+                status: error.response?.status,
+                headers: error.response?.headers,
+                config: {
+                    url: error.config?.url,
+                    method: error.config?.method,
+                    headers: {
+                        ...error.config?.headers,
+                        'Ocp-Apim-Subscription-Key': '***hidden***',
+                        'Authorization': '***hidden***'
+                    }
+                }
+            });
+            
+            if (error.response?.data?.error) {
+                throw new Error(`MoMo API Error: ${error.response.data.error}`);
+            }
+            
             throw new Error('Failed to initiate payment request');
         }
     }
@@ -81,10 +142,24 @@ class MomoService {
             const headers = this.generateAuthHeader();
             headers['X-Reference-Id'] = referenceId;
 
+            console.log('Checking payment status:', {
+                referenceId,
+                headers: {
+                    ...headers,
+                    'Ocp-Apim-Subscription-Key': '***hidden***',
+                    'Authorization': '***hidden***'
+                }
+            });
+
             const response = await axios.get(
                 `${this.baseUrl}/collection/v1_0/requesttopay/${referenceId}`,
                 { headers }
             );
+
+            console.log('Payment status response:', {
+                status: response.status,
+                data: response.data
+            });
 
             return {
                 referenceId,
@@ -92,7 +167,16 @@ class MomoService {
                 message: this.getStatusMessage(response.data.status)
             };
         } catch (error) {
-            console.error('Failed to get payment status:', error.response?.data || error.message);
+            console.error('Failed to get payment status:', {
+                error: error.response?.data || error.message,
+                status: error.response?.status,
+                referenceId
+            });
+            
+            if (error.response?.data?.error) {
+                throw new Error(`MoMo API Error: ${error.response.data.error}`);
+            }
+            
             throw new Error('Failed to get payment status');
         }
     }
