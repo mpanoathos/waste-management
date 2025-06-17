@@ -1,6 +1,10 @@
 const express = require('express');
 const router = express.Router();
 const sensorController = require('../controllers/sensorController');
+const { authenticateToken } = require('../middleware/auth');
+
+// All sensor routes require authentication
+router.use(authenticateToken);
 
 // Route to log sensor data for a specific bin
 router.post('/:binId/data', sensorController.logSensorData);

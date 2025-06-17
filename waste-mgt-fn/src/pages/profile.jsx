@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { isAuthenticated } from '../utils/auth'; // Utility to check authentication
-import SideNav from './SideNav';
+import SideNav from './SideNav/SideNav';
 
 const Profile = () => {
   const [user, setUser] = useState(null); // State to store user data
@@ -22,7 +22,7 @@ const Profile = () => {
         const response = await fetch('http://localhost:5000/user/profile', {
           method: 'GET',
           headers: {
-            Authorization: token, // Pass token in Authorization header
+            Authorization: `Bearer ${token}`,
           },
         });
 
@@ -57,10 +57,10 @@ const Profile = () => {
           <strong>Name:</strong> Mpano
         </p>
         <p className="text-gray-700">
-          <strong>Email:</strong> {user.email}
+          <strong>Email:</strong> M
         </p>
         <p className="text-gray-700">
-          <strong>Role:</strong> {user.role}
+          <strong>Role:</strong> A
         </p>
         <button
           onClick={() => {
