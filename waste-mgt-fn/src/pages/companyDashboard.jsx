@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import CompanySideNav from './SideNav/CompanySideNav';
 import { useNavigate } from 'react-router-dom';
 import { isAuthenticated } from '../utils/auth';
-import { FaUser, FaBell, FaTrash, FaHistory, FaCreditCard, FaExclamationTriangle, FaChartLine, FaChartBar, FaChartPie, FaMapMarkerAlt, FaTruck } from 'react-icons/fa';
+import { FaUser, FaBell, FaTrash, FaHistory, FaCreditCard, FaExclamationTriangle, FaChartLine, FaChartBar, FaChartPie, FaMapMarkerAlt, FaTruck, FaDownload } from 'react-icons/fa';
 import {
   Chart as ChartJS,
   CategoryScale,
