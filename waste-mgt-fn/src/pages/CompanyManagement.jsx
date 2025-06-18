@@ -21,7 +21,7 @@ const CompanyManagement = () => {
         try {
             setLoading(true);
             const token = localStorage.getItem('token');
-            const response = await fetch('http://localhost:5000/user/pending-companies', {
+            const response = await fetch('http://localhost:5000/user/companies', {
                 headers: {
                     Authorization: `Bearer ${token}`
                 }

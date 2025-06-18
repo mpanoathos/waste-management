@@ -274,7 +274,7 @@ const CompanyDashboard = () => {
         </div>
 
         {/* Performance Metrics */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
           <div className="bg-white rounded-lg shadow-sm p-6">
             <h2 className="text-xl font-bold text-gray-800 mb-4">Collection Efficiency</h2>
             <div className="flex items-center justify-center">
@@ -315,6 +315,43 @@ const CompanyDashboard = () => {
                 <p className="text-gray-600 mt-2">minutes per collection</p>
               </div>
             </div>
+          </div>
+        </div>
+
+        {/* Quick Actions Section */}
+        <div className="bg-white rounded-lg shadow-sm p-6">
+          <h2 className="text-xl font-bold text-gray-800 mb-4">Quick Actions</h2>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <button
+              onClick={() => navigate('/company-collection-history')}
+              className="flex items-center justify-center p-4 border-2 border-gray-200 rounded-lg hover:border-blue-500 hover:bg-blue-50 transition-all duration-200"
+            >
+              <FaDownload className="text-blue-600 text-xl mr-3" />
+              <div className="text-left">
+                <p className="font-semibold text-gray-800">Download Collection History</p>
+                <p className="text-sm text-gray-600">Get PDF report of all collections</p>
+              </div>
+            </button>
+            <button
+              onClick={() => navigate('/map-view')}
+              className="flex items-center justify-center p-4 border-2 border-gray-200 rounded-lg hover:border-green-500 hover:bg-green-50 transition-all duration-200"
+            >
+              <FaMapMarkerAlt className="text-green-600 text-xl mr-3" />
+              <div className="text-left">
+                <p className="font-semibold text-gray-800">View Map</p>
+                <p className="text-sm text-gray-600">See bin locations and routes</p>
+              </div>
+            </button>
+            <button
+              onClick={() => navigate('/bin-management')}
+              className="flex items-center justify-center p-4 border-2 border-gray-200 rounded-lg hover:border-purple-500 hover:bg-purple-50 transition-all duration-200"
+            >
+              <FaTrash className="text-purple-600 text-xl mr-3" />
+              <div className="text-left">
+                <p className="font-semibold text-gray-800">Manage Bins</p>
+                <p className="text-sm text-gray-600">Update bin status and details</p>
+              </div>
+            </button>
           </div>
         </div>
       </div>

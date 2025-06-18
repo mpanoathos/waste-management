@@ -53,9 +53,18 @@ export const fetchUsers = async () => {
     }
 };
 
+export const fetchUsersForBinManagement = async () => {
+    try {
+        const response = await api.get('/user/bin-management');
+        return response.data;
+    } catch (error) {
+        throw error;
+    }
+};
+
 export const collectBin = async (userId) => {
     try {
-        const response = await api.post(`/user/${userId}/collect`);
+        const response = await api.post(`/user/collect-bin/${userId}`);
         return response.data;
     } catch (error) {
         throw error;

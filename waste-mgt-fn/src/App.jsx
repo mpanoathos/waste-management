@@ -7,6 +7,7 @@ import Dashboard from './pages/Dashboard';
 import CompanyDashboard from './pages/companyDashboard';
 import Profile from './pages/profile';
 import CollectionHistory from './pages/CollectionHistory';
+import CompanyCollectionHistory from './pages/CompanyCollectionHistory';
 import Payment from './pages/payment';
 import AdminDashboard from './pages/adminDashboard';
 import BinManagement from './pages/companyBinManagement';
@@ -16,6 +17,7 @@ import Analytics from './pages/Analytics';
 import BinStatus from './pages/BinStatus';
 import CompanyManagement from './pages/CompanyManagement';
 import Chat from './pages/Chat';
+import UserManagement from './pages/UserManagement';
 
 function App() {
   return (
@@ -26,6 +28,7 @@ function App() {
         <Route path="/dashboard" element={<Dashboard/>} />
         <Route path="/profile" element={<Profile/>} />
         <Route path="/collection-history" element={<CollectionHistory />} />
+        <Route path="/company-collection-history" element={<CompanyCollectionHistory />} />
         <Route path="/payments" element={<Payment />} />
         <Route path="/company-dashboard" element={<CompanyDashboard />} />
         <Route path="/admin-dashboard" element={<AdminDashboard />} />
@@ -36,6 +39,7 @@ function App() {
         <Route path="/bin-status" element={<BinStatus />} />
         <Route path="/company-management" element={<CompanyManagement />} />
         <Route path="/chat" element={<Chat />} />
+        <Route path="/user-management" element={<UserManagement />} />
       </Routes>
     </Router>
   );

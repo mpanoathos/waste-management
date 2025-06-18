@@ -97,24 +97,103 @@ exports.getUserProfile = async (req, res) => {
 exports.getAllUsers = async (req, res) => {
   try {
     const users = await prisma.user.findMany({
-      include: {
-        bins: true, // ✅ correct relation name
+      where: {
+        role: 'USER' // Only get users with USER role
       },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        role: true,
+        phoneNumber: true,
+        address: true,
+        district: true,
+        sector: true,
+        cell: true,
+        companyName: true,
+        companyType: true,
+        approvalStatus: true,
+        createdAt: true
+      },
+      orderBy: {
+        createdAt: 'desc'
+      }
     });
 
-    // Use the first bin's status if exists, otherwise 'Unknown'
-    const usersWithBinStatus = users.map(user => ({
-      id: user.id,
-      name: user.name,
-      email: user.email,
-      binStatus: user.bins[0]?.status || 'Unknown',
-    }));
-
-    if (!users || users.length === 0) return res.status(404).json({ message: 'User not found' });
-
-    res.json({ users: usersWithBinStatus });
+    res.status(200).json({ 
+      success: true,
+      users 
+    });
   } catch (error) {
-    res.status(500).json({ message: 'Could not fetch users', error });
+    console.error('Error fetching users:', error);
+    res.status(500).json({ 
+      success: false,
+      message: 'Failed to fetch users',
+      error: error.message 
+    });
+  }
+};
+
+exports.getAllUsersWithRoles = async (req, res) => {
+  try {
+    const users = await prisma.user.findMany({
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        role: true,
+        phoneNumber: true,
+        address: true,
+        district: true,
+        sector: true,
+        cell: true,
+        companyName: true,
+        companyType: true,
+        approvalStatus: true,
+        createdAt: true,
+        bins: {
+          select: {
+            id: true,
+            status: true,
+            fillLevel: true,
+            location: true
+          }
+        }
+      },
+      orderBy: {
+        createdAt: 'desc'
+      }
+    });
+
+    // Group users by role for better organization
+    const usersByRole = {
+      ADMIN: users.filter(user => user.role === 'ADMIN'),
+      USER: users.filter(user => user.role === 'USER'),
+      COMPANY: users.filter(user => user.role === 'COMPANY')
+    };
+
+    // Add summary statistics
+    const summary = {
+      total: users.length,
+      admin: usersByRole.ADMIN.length,
+      users: usersByRole.USER.length,
+      companies: usersByRole.COMPANY.length,
+      pendingCompanies: usersByRole.COMPANY.filter(user => user.approvalStatus === 'PENDING').length
+    };
+
+    res.status(200).json({ 
+      success: true,
+      users,
+      usersByRole,
+      summary
+    });
+  } catch (error) {
+    console.error('Error fetching users with roles:', error);
+    res.status(500).json({ 
+      success: false,
+      message: 'Failed to fetch users',
+      error: error.message 
+    });
   }
 };
 
@@ -231,13 +310,24 @@ exports.resetPassword = async (req, res) => {
 exports.collectUserBin = async (req, res) => {
   const { userId } = req.params;
   try {
+    // Validate user ID
+    if (!userId || isNaN(parseInt(userId))) {
+      return res.status(400).json({ 
+        success: false,
+        message: 'Invalid user ID' 
+      });
+    }
+
     // Find the user's bin
     const bin = await prisma.bin.findFirst({
       where: { userId: Number(userId) }
     });
 
     if (!bin) {
-      return res.status(404).json({ message: 'Bin not found for user' });
+      return res.status(404).json({ 
+        success: false,
+        message: 'Bin not found for user' 
+      });
     }
 
     // Update the bin status to 'EMPTY' and fillLevel to 0
@@ -249,9 +339,47 @@ exports.collectUserBin = async (req, res) => {
       }
     });
 
-    res.status(200).json({ message: 'Bin marked as collected' });
+    // Create collection history record
+    const collectionHistory = await prisma.collectionHistory.create({
+      data: {
+        binId: bin.id,
+        collectedById: req.user.id,
+        notes: `Bin collected by ${req.user.name}`
+      },
+      include: {
+        bin: {
+          include: {
+            user: {
+              select: {
+                id: true,
+                name: true,
+                email: true
+              }
+            }
+          }
+        },
+        collectedBy: {
+          select: {
+            id: true,
+            name: true,
+            email: true
+          }
+        }
+      }
+    });
+
+    res.status(200).json({ 
+      success: true,
+      message: 'Bin marked as collected',
+      collectionHistory
+    });
   } catch (error) {
-    res.status(500).json({ message: 'Error marking bin as collected', error });
+    console.error('Error marking bin as collected:', error);
+    res.status(500).json({ 
+      success: false,
+      message: 'Error marking bin as collected',
+      error: error.message 
+    });
   }
 };
 
@@ -261,7 +389,10 @@ exports.collectBin = async (req, res) => {
     const collectedById = req.user.id; // Get the company user's ID from the auth token
 
     if (isNaN(userId)) {
-      throw new AppError('Invalid user ID', 400);
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid user ID'
+      });
     }
 
     // Find the user's bin
@@ -271,11 +402,17 @@ exports.collectBin = async (req, res) => {
     });
 
     if (!user) {
-      throw new AppError('User not found', 404);
+      return res.status(404).json({
+        success: false,
+        message: 'User not found'
+      });
     }
 
     if (!user.bins || user.bins.length === 0) {
-      throw new AppError('No bin found for this user', 404);
+      return res.status(404).json({
+        success: false,
+        message: 'No bin found for this user'
+      });
     }
 
     const binId = user.bins[0].id;
@@ -292,31 +429,50 @@ exports.collectBin = async (req, res) => {
     // Then create the collection history
     const collectionHistory = await prisma.collectionHistory.create({
       data: {
-        bin: {
-          connect: { id: binId }
-        },
-        collectedBy: {
-          connect: { id: collectedById }
-        },
-        notes: `Bin collected by company user ID: ${collectedById}`
+        binId: binId,
+        collectedById: collectedById,
+        notes: `Bin collected by company user: ${req.user.name}`
       },
       include: {
-        bin: true,
-        collectedBy: true
+        bin: {
+          include: {
+            user: {
+              select: {
+                id: true,
+                name: true,
+                email: true,
+                phoneNumber: true
+              }
+            }
+          }
+        },
+        collectedBy: {
+          select: {
+            id: true,
+            name: true,
+            email: true
+          }
+        }
       }
     });
 
     res.status(200).json({ 
+      success: true,
       message: 'Bin collected successfully',
       bin: updatedBin,
       collectionHistory
     });
   } catch (error) {
-    handleError(error, res);
+    console.error('Error collecting bin:', error);
+    res.status(500).json({ 
+      success: false,
+      message: 'Error collecting bin',
+      error: error.message 
+    });
   }
 };
 
-// Add a new function to get collection history
+// Add a new function to get collection history (admin only)
 exports.getCollectionHistory = async (req, res) => {
   try {
     const history = await prisma.collectionHistory.findMany({
@@ -345,9 +501,17 @@ exports.getCollectionHistory = async (req, res) => {
       }
     });
 
-    res.status(200).json({ history });
+    res.status(200).json({ 
+      success: true,
+      history 
+    });
   } catch (error) {
-    handleError(error, res);
+    console.error('Error fetching collection history:', error);
+    res.status(500).json({ 
+      success: false,
+      message: 'Failed to fetch collection history',
+      error: error.message 
+    });
   }
 };
 
@@ -387,9 +551,92 @@ exports.getUserCollectionHistory = async (req, res) => {
       }
     });
 
-    res.status(200).json({ history });
+    res.status(200).json({ 
+      success: true,
+      history 
+    });
   } catch (error) {
-    handleError(error, res);
+    console.error('Error fetching user collection history:', error);
+    res.status(500).json({ 
+      success: false,
+      message: 'Failed to fetch collection history',
+      error: error.message 
+    });
+  }
+};
+
+// Get collection history for companies (collections performed BY the company)
+exports.getCompanyCollectionHistory = async (req, res) => {
+  try {
+    const companyId = req.user.id; // Get company ID from the authenticated request
+
+    // Verify the user is a company
+    if (req.user.role !== 'COMPANY') {
+      return res.status(403).json({
+        success: false,
+        message: 'Access denied. Only companies can view their collection history.'
+      });
+    }
+
+    const history = await prisma.collectionHistory.findMany({
+      where: {
+        collectedById: companyId // Collections performed by this company
+      },
+      include: {
+        bin: {
+          include: {
+            user: {
+              select: {
+                id: true,
+                name: true,
+                email: true,
+                address: true,
+                district: true,
+                sector: true,
+                cell: true
+              }
+            }
+          }
+        },
+        collectedBy: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            companyName: true
+          }
+        }
+      },
+      orderBy: {
+        collectedAt: 'desc'
+      }
+    });
+
+    // Add summary statistics
+    const summary = {
+      totalCollections: history.length,
+      totalUsers: new Set(history.map(record => record.bin.user.id)).size,
+      totalLocations: new Set(history.map(record => record.bin.location)).size,
+      thisMonth: history.filter(record => {
+        const thisMonth = new Date();
+        const recordDate = new Date(record.collectedAt);
+        return thisMonth.getMonth() === recordDate.getMonth() && 
+               thisMonth.getFullYear() === recordDate.getFullYear();
+      }).length
+    };
+
+    res.status(200).json({ 
+      success: true,
+      history,
+      summary
+    });
+  } catch (error) {
+    console.error('Error fetching company collection history:', error);
+    res.status(500).json({ 
+      success: false,
+      message: 'Failed to fetch company collection history',
+      error: error.message 
+    });
   }
 };
 
@@ -410,7 +657,10 @@ exports.updateUserProfile = async (req, res) => {
 
     // Validate required fields
     if (!name || !email) {
-      return res.status(400).json({ message: 'Name and email are required' });
+      return res.status(400).json({ 
+        success: false,
+        message: 'Name and email are required' 
+      });
     }
 
     // Check if email is already taken by another user
@@ -422,7 +672,10 @@ exports.updateUserProfile = async (req, res) => {
     });
 
     if (existingUser) {
-      return res.status(400).json({ message: 'Email is already taken' });
+      return res.status(400).json({ 
+        success: false,
+        message: 'Email is already taken' 
+      });
     }
 
     // Update user profile
@@ -447,12 +700,14 @@ exports.updateUserProfile = async (req, res) => {
     const { password, ...userWithoutPassword } = updatedUser;
 
     res.status(200).json({
+      success: true,
       message: 'Profile updated successfully',
       user: userWithoutPassword
     });
   } catch (error) {
     console.error('Error updating profile:', error);
     res.status(500).json({
+      success: false,
       message: 'Failed to update profile',
       error: error.message
     });
@@ -462,15 +717,26 @@ exports.updateUserProfile = async (req, res) => {
 // Add new function to handle company approvals
 exports.approveCompany = async (req, res) => {
   try {
-    const { userId, status } = req.body;
+    const { userId, status, reason } = req.body;
     
     if (!['APPROVED', 'REJECTED'].includes(status)) {
       return res.status(400).json({ message: 'Invalid approval status' });
     }
 
+    // If rejecting, require a reason
+    if (status === 'REJECTED' && !reason) {
+      return res.status(400).json({ message: 'Rejection reason is required' });
+    }
+
+    const updateData = { 
+      approvalStatus: status,
+      ...(status === 'REJECTED' && { rejectionReason: reason }),
+      ...(status === 'APPROVED' && { rejectionReason: null }) // Clear rejection reason if approved
+    };
+
     const user = await prisma.user.update({
       where: { id: userId },
-      data: { approvalStatus: status }
+      data: updateData
     });
 
     res.status(200).json({ 
@@ -478,7 +744,8 @@ exports.approveCompany = async (req, res) => {
       user 
     });
   } catch (error) {
-    res.status(500).json({ message: 'Failed to update company status', error });
+    console.error('Error updating company status:', error);
+    res.status(500).json({ message: 'Failed to update company status', error: error.message });
   }
 };
 
@@ -505,5 +772,84 @@ exports.getPendingCompanies = async (req, res) => {
     res.status(200).json({ companies: pendingCompanies });
   } catch (error) {
     res.status(500).json({ message: 'Failed to fetch pending companies', error });
+  }
+};
+
+exports.getAllCompanies = async (req, res) => {
+  try {
+    const companies = await prisma.user.findMany({
+      where: { role: 'COMPANY' },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        companyName: true,
+        companyType: true,
+        phoneNumber: true,
+        address: true,
+        approvalStatus: true,
+        rejectionReason: true,
+        createdAt: true,
+        district: true,
+        sector: true,
+        cell: true,
+      },
+      orderBy: { createdAt: 'desc' }
+    });
+    res.status(200).json({ companies });
+  } catch (error) {
+    res.status(500).json({ message: 'Failed to fetch companies', error: error.message });
+  }
+};
+
+exports.getUsersForBinManagement = async (req, res) => {
+  try {
+    const users = await prisma.user.findMany({
+      where: {
+        role: 'USER' // Only get users with USER role
+      },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        role: true,
+        bins: {
+          select: {
+            id: true,
+            status: true,
+            fillLevel: true,
+            location: true,
+            type: true
+          }
+        }
+      },
+      orderBy: {
+        createdAt: 'desc'
+      }
+    });
+
+    // Transform the data to include binStatus
+    const usersWithBinStatus = users.map(user => ({
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      role: user.role,
+      binStatus: user.bins && user.bins.length > 0 ? user.bins[0].status : 'EMPTY',
+      binFillLevel: user.bins && user.bins.length > 0 ? user.bins[0].fillLevel : 0,
+      binLocation: user.bins && user.bins.length > 0 ? user.bins[0].location : 'Unknown',
+      binType: user.bins && user.bins.length > 0 ? user.bins[0].type : 'ORGANIC'
+    }));
+
+    res.status(200).json({ 
+      success: true,
+      users: usersWithBinStatus
+    });
+  } catch (error) {
+    console.error('Error fetching users for bin management:', error);
+    res.status(500).json({ 
+      success: false,
+      message: 'Failed to fetch users for bin management',
+      error: error.message 
+    });
   }
 };

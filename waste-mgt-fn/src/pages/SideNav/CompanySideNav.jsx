@@ -14,7 +14,7 @@ const CompanySideNav = () => {
     { path: '/bin-management', icon: <FaTrash />, label: 'Bin Management' },
     { path: '/route-optimization', icon: <FaRoute />, label: 'Route Optimization' },
     { path: '/company-analytics', icon: <FaChartBar />, label: 'Analytics' },
-    { path: '/collection-history-company', icon: <FaHistory />, label: 'Collection History' },
+    { path: '/company-collection-history', icon: <FaHistory />, label: 'Collection History' },
   ];
 
   return (

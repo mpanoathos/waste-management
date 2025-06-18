@@ -7,7 +7,10 @@ exports.logSensorData = async (req, res) => {
   const { fillLevel, temperature, humidity, wasteType } = req.body;
 
   try {
-    const bin = await prisma.bin.findUnique({ where: { id: parseInt(binId) } });
+    const bin = await prisma.bin.findUnique({ 
+      where: { id: parseInt(binId) }
+    });
+    
     if (!bin) return res.status(404).json({ message: 'Bin not found' });
 
     const sensorLog = await prisma.sensorLog.create({
@@ -20,13 +23,24 @@ exports.logSensorData = async (req, res) => {
       }
     });
 
-    // Optional: Alert if bin is full
-    if (fillLevel >= 90) {
-      console.log(`⚠️ Bin ${binId} is almost full.`);
-      // TODO: Notify user or waste manager
-    }
+    // Update bin status based on fill level
+    let newStatus = 'EMPTY';
+    if (fillLevel >= 80) newStatus = 'FULL';
+    else if (fillLevel >= 50) newStatus = 'PARTIAL';
 
-    res.status(201).json({ message: 'Sensor data logged', data: sensorLog });
+    await prisma.bin.update({
+      where: { id: parseInt(binId) },
+      data: { 
+        status: newStatus,
+        fillLevel: fillLevel
+      }
+    });
+
+    res.status(201).json({ 
+      message: 'Sensor data logged', 
+      data: sensorLog,
+      binStatus: newStatus
+    });
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: 'Failed to log sensor data', error });

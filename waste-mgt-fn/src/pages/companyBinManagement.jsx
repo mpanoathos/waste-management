@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import CompanySideNav from "./SideNav/CompanySideNav";
 import { toast } from 'react-toastify';
-import { fetchUsers, collectBin } from '../utils/api';
+import { fetchUsersForBinManagement, collectBin } from '../utils/api';
 import LoadingSpinner from '../components/LoadingSpinner';
 
 const BinManagement = () => {
@@ -13,14 +13,17 @@ const BinManagement = () => {
         const fetchAllUsers = async () => {
             try {
                 setLoading(true);
-                const data = await fetchUsers();
+                const data = await fetchUsersForBinManagement();
                 setUsers(
                     Array.isArray(data.users)
                         ? data.users.map(user => ({
                             id: user.id || user._id,
                             name: user.name,
                             email: user.email,
-                            binStatus: user.binStatus 
+                            binStatus: user.binStatus,
+                            binFillLevel: user.binFillLevel,
+                            binLocation: user.binLocation,
+                            binType: user.binType
                         }))
                         : []
                 );
@@ -85,6 +88,9 @@ const BinManagement = () => {
                                 <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
                                 <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
                                 <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Bin Status</th>
+                                <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Fill Level</th>
+                                <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Location</th>
+                                <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
                                 <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Action</th>
                             </tr>
                         </thead>
@@ -107,6 +113,22 @@ const BinManagement = () => {
                                             {user.binStatus}
                                         </span>
                                     </td>
+                                    <td className="py-3 px-4 whitespace-nowrap text-sm text-gray-900">
+                                        <div className="flex items-center">
+                                            <div className="w-16 bg-gray-200 rounded-full h-2 mr-2">
+                                                <div 
+                                                    className={`h-2 rounded-full ${
+                                                        user.binFillLevel >= 80 ? 'bg-red-500' :
+                                                        user.binFillLevel >= 50 ? 'bg-yellow-500' : 'bg-green-500'
+                                                    }`}
+                                                    style={{ width: `${user.binFillLevel}%` }}
+                                                ></div>
+                                            </div>
+                                            <span className="text-xs text-gray-500">{user.binFillLevel}%</span>
+                                        </div>
+                                    </td>
+                                    <td className="py-3 px-4 whitespace-nowrap text-sm text-gray-900">{user.binLocation}</td>
+                                    <td className="py-3 px-4 whitespace-nowrap text-sm text-gray-900">{user.binType}</td>
                                     <td className="py-3 px-4 whitespace-nowrap">
                                         <button
                                             onClick={() => handleCollected(user.id)}
@@ -130,7 +152,7 @@ const BinManagement = () => {
                             ))}
                             {users.length === 0 && (
                                 <tr>
-                                    <td colSpan="5" className="py-8 text-center text-gray-500">
+                                    <td colSpan="8" className="py-8 text-center text-gray-500">
                                         No users found.
                                     </td>
                                 </tr>
