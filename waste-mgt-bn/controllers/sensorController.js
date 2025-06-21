@@ -63,21 +63,3 @@ exports.getSensorLogsForBin = async (req, res) => {
     res.status(500).json({ message: 'Failed to retrieve logs', error });
   }
 };
-
-// GET /sensors/recent
-exports.getRecentSensorLogs = async (req, res) => {
-  try {
-    const recentLogs = await prisma.sensorLog.findMany({
-      take: 10,
-      orderBy: { timestamp: 'desc' },
-      include: {
-        bin: true
-      }
-    });
-
-    res.status(200).json({ message: 'Recent sensor logs', data: recentLogs });
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: 'Failed to fetch recent logs', error });
-  }
-};

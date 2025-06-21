@@ -119,4 +119,103 @@ exports.getUserPayments = async (req, res) => {
             error: error.message
         });
     }
+};
+
+// Webhook handler for MoMo payment callbacks
+exports.handlePaymentWebhook = async (req, res) => {
+    try {
+        const { referenceId, status, message, amount, currency, payer } = req.body;
+        
+        console.log('Received payment webhook:', {
+            referenceId,
+            status,
+            message,
+            amount,
+            currency,
+            payer: payer ? '***exists***' : '***missing***'
+        });
+
+        if (!referenceId) {
+            console.error('Webhook missing referenceId');
+            return res.status(400).json({ error: 'Missing referenceId' });
+        }
+
+        // Find the payment by reference ID
+        const payment = await prisma.payment.findFirst({
+            where: { referenceId }
+        });
+
+        if (!payment) {
+            console.error('Payment not found for referenceId:', referenceId);
+            return res.status(404).json({ error: 'Payment not found' });
+        }
+
+        // Update payment status
+        const updatedPayment = await prisma.payment.update({
+            where: { id: payment.id },
+            data: { 
+                status: status.toUpperCase(),
+                updatedAt: new Date()
+            }
+        });
+
+        console.log('Payment status updated:', {
+            paymentId: payment.id,
+            oldStatus: payment.status,
+            newStatus: status,
+            referenceId
+        });
+
+        // Send success response to MoMo
+        res.status(200).json({ 
+            status: 'success',
+            message: 'Payment status updated successfully'
+        });
+
+    } catch (error) {
+        console.error('Payment webhook error:', error);
+        res.status(500).json({
+            error: 'Failed to process payment webhook',
+            message: error.message
+        });
+    }
+};
+
+// Test payment endpoint (for development)
+exports.testPayment = async (req, res) => {
+    try {
+        const { amount, phoneNumber } = req.body;
+        
+        if (!amount || !phoneNumber) {
+            return res.status(400).json({
+                error: 'Amount and phone number are required'
+            });
+        }
+
+        // Create a test payment record
+        const payment = await prisma.payment.create({
+            data: {
+                userId: req.user.id,
+                amount: parseFloat(amount),
+                status: 'PENDING',
+                referenceId: `TEST-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
+            }
+        });
+
+        res.status(200).json({
+            message: 'Test payment created successfully',
+            payment: {
+                id: payment.id,
+                amount: payment.amount,
+                status: payment.status,
+                referenceId: payment.referenceId
+            }
+        });
+    } catch (error) {
+        console.error('Test payment error:', error);
+        res.status(500).json({
+            error: 'Failed to create test payment',
+            message: error.message
+        });
+    }
 }; 

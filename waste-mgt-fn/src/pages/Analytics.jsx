@@ -43,10 +43,10 @@ const AnalyticsPDF = ({ report }) => (
           <Text style={[pdfStyles.tableCell, pdfStyles.headerCell, { width: '50%' }]}>Status</Text>
           <Text style={[pdfStyles.tableCell, pdfStyles.headerCell, { width: '50%' }]}>Count</Text>
         </View>
-        {report.binsByStatus.map((b) => (
+        {report.binsByStatus && report.binsByStatus.map((b) => (
           <View key={b.status} style={pdfStyles.tableRow}>
             <Text style={[pdfStyles.tableCell, { width: '50%' }]}>{b.status}</Text>
-            <Text style={[pdfStyles.tableCell, { width: '50%' }]}>{b._count.status}</Text>
+            <Text style={[pdfStyles.tableCell, { width: '50%' }]}>{b._count?.status || 0}</Text>
           </View>
         ))}
       </View>
@@ -57,10 +57,10 @@ const AnalyticsPDF = ({ report }) => (
           <Text style={[pdfStyles.tableCell, pdfStyles.headerCell, { width: '50%' }]}>Role</Text>
           <Text style={[pdfStyles.tableCell, pdfStyles.headerCell, { width: '50%' }]}>Count</Text>
         </View>
-        {report.usersByRole.map((r) => (
+        {report.usersByRole && report.usersByRole.map((r) => (
           <View key={r.role} style={pdfStyles.tableRow}>
             <Text style={[pdfStyles.tableCell, { width: '50%' }]}>{r.role}</Text>
-            <Text style={[pdfStyles.tableCell, { width: '50%' }]}>{r._count.role}</Text>
+            <Text style={[pdfStyles.tableCell, { width: '50%' }]}>{r._count?.role || 0}</Text>
           </View>
         ))}
       </View>
@@ -86,7 +86,7 @@ const AnalyticsPDF = ({ report }) => (
           <Text style={[pdfStyles.tableCell, pdfStyles.headerCell, { width: '45%' }]}>Collected By</Text>
           <Text style={[pdfStyles.tableCell, pdfStyles.headerCell, { width: '30%' }]}>Date & Time</Text>
         </View>
-        {report.recentCollections.map((rc) => (
+        {report.recentCollections && report.recentCollections.map((rc) => (
           <View key={rc.id} style={pdfStyles.tableRow}>
             <Text style={[pdfStyles.tableCell, { width: '25%' }]}>{`#${rc.binId}`}</Text>
             <Text style={[pdfStyles.tableCell, { width: '45%' }]}>{rc.collectedBy?.name || 'Unknown'}</Text>
@@ -107,10 +107,24 @@ const Analytics = () => {
     fetch('http://localhost:5000/analytics/report')
       .then(res => res.json())
       .then(data => {
-        setReport(data);
+        // Ensure all required arrays exist with default values
+        const safeData = {
+          totalBins: data.totalBins || 0,
+          totalCollections: data.totalCollections || 0,
+          collectionsLast7Days: data.collectionsLast7Days || 0,
+          totalUsers: data.totalUsers || 0,
+          usersThisMonth: data.usersThisMonth || 0,
+          avgFillLevel: data.avgFillLevel || 0,
+          binsByStatus: data.binsByStatus || [],
+          usersByRole: data.usersByRole || [],
+          recentCollections: data.recentCollections || [],
+          mostActiveCollector: data.mostActiveCollector || null
+        };
+        setReport(safeData);
         setLoading(false);
       })
       .catch(err => {
+        console.error('Analytics fetch error:', err);
         setError('Failed to fetch analytics report');
         setLoading(false);
       });
@@ -166,24 +180,32 @@ const Analytics = () => {
             <div className="bg-white rounded-lg shadow-md p-6">
               <h2 className="text-lg font-semibold text-gray-800 mb-4 flex items-center"><FaChartPie className="mr-2 text-blue-400" />Bins by Status</h2>
               <ul className="space-y-2">
-                {report.binsByStatus.map((b) => (
-                  <li key={b.status} className={`flex items-center justify-between px-4 py-2 rounded ${statusColors[b.status] || 'bg-gray-100 text-gray-700'}`}>
-                    <span className="font-medium">{b.status}</span>
-                    <span className="font-bold">{b._count.status}</span>
-                  </li>
-                ))}
+                {report.binsByStatus && report.binsByStatus.length > 0 ? (
+                  report.binsByStatus.map((b) => (
+                    <li key={b.status} className={`flex items-center justify-between px-4 py-2 rounded ${statusColors[b.status] || 'bg-gray-100 text-gray-700'}`}>
+                      <span className="font-medium">{b.status}</span>
+                      <span className="font-bold">{b._count?.status || 0}</span>
+                    </li>
+                  ))
+                ) : (
+                  <li className="text-gray-500 text-center py-2">No bin status data available</li>
+                )}
               </ul>
             </div>
             {/* Users by Role */}
             <div className="bg-white rounded-lg shadow-md p-6">
               <h2 className="text-lg font-semibold text-gray-800 mb-4 flex items-center"><FaUserTie className="mr-2 text-purple-400" />Users by Role</h2>
               <ul className="space-y-2">
-                {report.usersByRole.map((r) => (
-                  <li key={r.role} className="flex items-center justify-between px-4 py-2 rounded bg-gray-100 text-gray-700">
-                    <span className="font-medium">{r.role}</span>
-                    <span className="font-bold">{r._count.role}</span>
-                  </li>
-                ))}
+                {report.usersByRole && report.usersByRole.length > 0 ? (
+                  report.usersByRole.map((r) => (
+                    <li key={r.role} className="flex items-center justify-between px-4 py-2 rounded bg-gray-100 text-gray-700">
+                      <span className="font-medium">{r.role}</span>
+                      <span className="font-bold">{r._count?.role || 0}</span>
+                    </li>
+                  ))
+                ) : (
+                  <li className="text-gray-500 text-center py-2">No user role data available</li>
+                )}
               </ul>
             </div>
           </div>

@@ -199,43 +199,58 @@ const ReportChat = ({ thread, onClose }) => {
 
   return (
     <div className="flex flex-col h-full">
-      <div className="flex items-center justify-between px-6 py-4 border-b bg-white shadow-sm">
-        <div>
-          <h2 className="text-xl font-bold">Thread: {thread.subject}</h2>
-        </div>
-        <button className="text-gray-500 hover:text-red-500 text-xl" onClick={onClose}>✕</button>
+      <div className="flex items-center justify-between p-4 border-b bg-white">
+        <h2 className="text-lg font-semibold">{thread.subject}</h2>
+        <button
+          onClick={onClose}
+          className="text-gray-500 hover:text-gray-700"
+        >
+          ✕
+        </button>
       </div>
-      <div className="flex-1 overflow-y-auto px-6 py-4 space-y-2 bg-gradient-to-br from-blue-100/40 to-white" style={{ minHeight: '400px' }}>
+      <div className="flex-1 overflow-y-auto p-4 space-y-4">
         {loading ? (
-          <div>Loading...</div>
-        ) : messages.length === 0 ? (
-          <div className="text-gray-500">No messages yet.</div>
+          <div>Loading messages...</div>
         ) : (
-          messages.map((msg, idx) => (
+          messages.map(message => (
             <div
-              key={msg.id}
-              className={`flex items-end ${msg.senderRole === 'USER' ? 'justify-end' : 'justify-start'} animate-fadeIn`}
+              key={message.id}
+              className={`flex ${message.senderRole === 'ADMIN' ? 'justify-start' : 'justify-end'}`}
             >
-              <div className={`max-w-xs px-4 py-2 rounded-2xl shadow ${msg.senderRole === 'USER' ? 'bg-blue-600 text-white' : 'bg-white text-gray-800 border'}`}>
-                <div className="text-xs font-semibold mb-1">{msg.senderRole === 'USER' ? 'You' : 'Admin'}</div>
-                <div>{msg.content}</div>
-                <div className="text-xs text-gray-300 mt-1 text-right">{new Date(msg.createdAt).toLocaleString()}</div>
+              <div
+                className={`max-w-xs lg:max-w-md px-4 py-2 rounded-lg ${
+                  message.senderRole === 'ADMIN'
+                    ? 'bg-gray-200 text-gray-800'
+                    : 'bg-blue-600 text-white'
+                }`}
+              >
+                <div className="text-sm">{message.content}</div>
+                <div className="text-xs opacity-75 mt-1">
+                  {new Date(message.createdAt).toLocaleString()}
+                </div>
               </div>
             </div>
           ))
         )}
         <div ref={messagesEndRef} />
       </div>
-      <form onSubmit={sendMessage} className="flex gap-2 p-4 border-t bg-white sticky bottom-0">
-        <input
-          type="text"
-          value={newMsg}
-          onChange={e => setNewMsg(e.target.value)}
-          className="flex-1 border rounded px-3 py-2"
-          placeholder="Type your message..."
-          required
-        />
-        <button type="submit" className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">Send</button>
+      <form onSubmit={sendMessage} className="p-4 border-t bg-white">
+        <div className="flex space-x-2">
+          <input
+            type="text"
+            value={newMsg}
+            onChange={e => setNewMsg(e.target.value)}
+            placeholder="Type your message..."
+            className="flex-1 border rounded px-3 py-2"
+            required
+          />
+          <button
+            type="submit"
+            className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
+          >
+            Send
+          </button>
+        </div>
       </form>
     </div>
   );

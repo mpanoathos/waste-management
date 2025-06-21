@@ -29,4 +29,30 @@ router.get('/pending-companies', authenticateToken, isAdmin, userController.getP
 router.post('/approve-company', authenticateToken, isAdmin, userController.approveCompany);
 router.get('/companies', authenticateToken, isAdmin, userController.getAllCompanies);
 
+// Test email configuration route
+router.get('/test-email', async (req, res) => {
+  try {
+    const { testEmailConfig } = require('../utils/emailService');
+    const isWorking = await testEmailConfig();
+    
+    if (isWorking) {
+      res.json({ 
+        success: true, 
+        message: 'Email configuration is working correctly!' 
+      });
+    } else {
+      res.status(500).json({ 
+        success: false, 
+        message: 'Email configuration test failed. Check the console for details.' 
+      });
+    }
+  } catch (error) {
+    res.status(500).json({ 
+      success: false, 
+      message: 'Email test failed', 
+      error: error.message 
+    });
+  }
+});
+
 module.exports = router;

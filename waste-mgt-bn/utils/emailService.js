@@ -38,13 +38,19 @@ const sendEmail = async (to, subject, templateName, templateData) => {
       throw new Error('Failed to render email template');
     }
 
-    // Configure the email transporter
-    const transporter = nodemailer.createTransport({
+    // Configure the email transporter with better Gmail settings
+    const transporter = nodemailer.createTransporter({
       service: 'Gmail',
+      host: 'smtp.gmail.com',
+      port: 587,
+      secure: false, // true for 465, false for other ports
       auth: {
         user: process.env.EMAIL_USER,
         pass: process.env.EMAIL_PASS,
       },
+      tls: {
+        rejectUnauthorized: false
+      }
     });
 
     // Verify transporter configuration
@@ -53,12 +59,23 @@ const sendEmail = async (to, subject, templateName, templateData) => {
       console.log('Email transporter verified successfully');
     } catch (error) {
       console.error('Email transporter verification failed:', error);
+      
+      // Provide helpful error messages for common Gmail issues
+      if (error.code === 'EAUTH') {
+        console.error('Gmail Authentication Error. Please check:');
+        console.error('1. Use App Password instead of regular password');
+        console.error('2. Enable 2-factor authentication on your Gmail account');
+        console.error('3. Generate an App Password: https://myaccount.google.com/apppasswords');
+        console.error('4. Make sure EMAIL_USER and EMAIL_PASS are correctly set in .env file');
+        throw new Error('Gmail authentication failed. Please use App Password and check your credentials.');
+      }
+      
       throw new Error('Failed to verify email configuration');
     }
 
     // Send the email
     const mailOptions = {
-      from: process.env.EMAIL_USER,
+      from: `"Waste Management System" <${process.env.EMAIL_USER}>`,
       to,
       subject,
       html,
@@ -84,4 +101,34 @@ const sendEmail = async (to, subject, templateName, templateData) => {
   }
 };
 
-module.exports = { sendEmail };
+// Helper function to test email configuration
+const testEmailConfig = async () => {
+  try {
+    console.log('Testing email configuration...');
+    console.log('EMAIL_USER:', process.env.EMAIL_USER ? 'Set' : 'Not set');
+    console.log('EMAIL_PASS:', process.env.EMAIL_PASS ? 'Set (length: ' + process.env.EMAIL_PASS.length + ')' : 'Not set');
+    
+    const transporter = nodemailer.createTransporter({
+      service: 'Gmail',
+      host: 'smtp.gmail.com',
+      port: 587,
+      secure: false,
+      auth: {
+        user: process.env.EMAIL_USER,
+        pass: process.env.EMAIL_PASS,
+      },
+      tls: {
+        rejectUnauthorized: false
+      }
+    });
+
+    await transporter.verify();
+    console.log('✅ Email configuration is working correctly!');
+    return true;
+  } catch (error) {
+    console.error('❌ Email configuration test failed:', error.message);
+    return false;
+  }
+};
+
+module.exports = { sendEmail, testEmailConfig };

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, Polyline } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -59,6 +59,7 @@ const getStatusKey = (status) => {
 
 const MapView = () => {
   const [loading, setLoading] = useState(true);
+  const [loadingMessage, setLoadingMessage] = useState('Initializing...');
   const [bins, setBins] = useState([]);
   const [routes, setRoutes] = useState([]);
   const [selectedBin, setSelectedBin] = useState(null);
@@ -68,6 +69,7 @@ const MapView = () => {
     lastCollected: 'ALL'
   });
   const [showFilters, setShowFilters] = useState(false);
+  const [error, setError] = useState(null);
 
   // Default center (Kigali, Rwanda)
   const defaultCenter = {
@@ -79,38 +81,95 @@ const MapView = () => {
   const currentUserId = JSON.parse(localStorage.getItem('user'))?.id;
 
   useEffect(() => {
-    fetchBinsAndRoutes();
+    const token = localStorage.getItem('token');
+    if (!token) {
+      setError('No authentication token found. Please log in.');
+      setLoading(false);
+      return;
+    }
+
+    // Check if backend is running first
+    checkBackendHealth().then(() => {
+      fetchBinsAndRoutes();
+    }).catch(() => {
+      setError('Backend server is not running. Please start the server and try again.');
+      setLoading(false);
+    });
+
     const interval = setInterval(fetchBinsAndRoutes, 30000);
     return () => clearInterval(interval);
   }, []);
 
+  const checkBackendHealth = async () => {
+    try {
+      await axios.get('http://localhost:5000/health', { timeout: 5000 });
+    } catch (error) {
+      throw new Error('Backend server is not responding');
+    }
+  };
+
   const fetchBinsAndRoutes = async () => {
     try {
       setLoading(true);
+      setLoadingMessage('Checking authentication...');
+      setError(null);
       const token = localStorage.getItem('token');
       
-      // Fetch bins
-      const binsResponse = await axios.get('http://localhost:5000/bin', {
-        headers: {  
-          Authorization: `Bearer ${token}`
-        }
-      });
+      if (!token) {
+        setError('No authentication token found. Please log in.');
+        return;
+      }
       
-      setBins(binsResponse.data.bins || []);
+      setLoadingMessage('Fetching bin data...');
       
-      // Fetch company routes
-      try {
-        const routesResponse = await fetchMyRoutes(token);
-        setRoutes(routesResponse.data.routes || []);
-      } catch (routeError) {
-        console.log('Routes not available:', routeError.message);
+      // Create a timeout promise
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Request timeout')), 10000)
+      );
+      
+      // Fetch bins and routes in parallel for better performance
+      const [binsResponse, routesResponse] = await Promise.allSettled([
+        Promise.race([
+          axios.get('http://localhost:5000/bin', {
+            headers: {  
+              Authorization: `Bearer ${token}`
+            }
+          }),
+          timeoutPromise
+        ]),
+        Promise.race([
+          fetchMyRoutes(token).catch(err => {
+            console.log('Routes not available:', err.message);
+            return { data: { routes: [] } };
+          }),
+          timeoutPromise
+        ])
+      ]);
+      
+      setLoadingMessage('Processing data...');
+      
+      // Handle bins response
+      if (binsResponse.status === 'fulfilled') {
+        setBins(binsResponse.value.data.bins || []);
+      } else {
+        console.error('Error fetching bins:', binsResponse.reason);
+        setError('Failed to fetch bins data: ' + (binsResponse.reason.message || 'Unknown error'));
+      }
+      
+      // Handle routes response
+      if (routesResponse.status === 'fulfilled') {
+        setRoutes(routesResponse.value.data.routes || []);
+      } else {
+        console.log('Routes not available:', routesResponse.reason.message);
         setRoutes([]);
       }
+      
     } catch (error) {
-      toast.error('Failed to fetch map data');
       console.error('Error fetching map data:', error);
+      setError('Failed to fetch map data: ' + (error.response?.data?.message || error.message));
     } finally {
       setLoading(false);
+      setLoadingMessage('Initializing...');
     }
   };
 
@@ -118,29 +177,29 @@ const MapView = () => {
     setSelectedBin(bin);
   };
 
-  const filteredBins = bins.filter(bin => {
-    const normalizedBinStatus = getStatusKey(bin.status);
-    if (filters.status !== 'ALL' && normalizedBinStatus !== filters.status) return false;
-    if (filters.lastCollected !== 'ALL') {
-      const lastCollected = new Date(bin.lastCollected);
-      const now = new Date();
-      const daysDiff = Math.floor((now - lastCollected) / (1000 * 60 * 60 * 24));
-      if (filters.lastCollected === 'TODAY' && daysDiff > 0) return false;
-      if (filters.lastCollected === 'WEEK' && daysDiff > 7) return false;
-      if (filters.lastCollected === 'MONTH' && daysDiff > 30) return false;
-    }
-    return true;
-  });
+  const filteredBins = useMemo(() => {
+    return bins.filter(bin => {
+      const normalizedBinStatus = getStatusKey(bin.status);
+      if (filters.status !== 'ALL' && normalizedBinStatus !== filters.status) return false;
+      if (filters.lastCollected !== 'ALL') {
+        const lastCollected = new Date(bin.lastCollected);
+        const now = new Date();
+        const daysDiff = Math.floor((now - lastCollected) / (1000 * 60 * 60 * 24));
+        if (filters.lastCollected === 'TODAY' && daysDiff > 0) return false;
+        if (filters.lastCollected === 'WEEK' && daysDiff > 7) return false;
+        if (filters.lastCollected === 'MONTH' && daysDiff > 30) return false;
+      }
+      return true;
+    });
+  }, [bins, filters]);
 
-  const getStatusCounts = () => {
+  const statusCounts = useMemo(() => {
     return bins.reduce((acc, bin) => {
       const key = getStatusKey(bin.status);
       acc[key] = (acc[key] || 0) + 1;
       return acc;
     }, {});
-  };
-
-  const statusCounts = getStatusCounts();
+  }, [bins]);
 
   // Autofix handler for missing coordinates
   const handleAutoFixBins = async () => {
@@ -246,7 +305,24 @@ const MapView = () => {
         <div className="flex-1 relative overflow-hidden">
           {loading ? (
             <div className="absolute inset-0 flex items-center justify-center bg-gray-100 bg-opacity-75 z-10">
-              <LoadingSpinner size="large" />
+              <div className="text-center">
+                <LoadingSpinner size="large" />
+                <p className="mt-4 text-gray-600">{loadingMessage}</p>
+              </div>
+            </div>
+          ) : error ? (
+            <div className="absolute inset-0 flex items-center justify-center bg-gray-100 bg-opacity-75 z-10">
+              <div className="text-center bg-white p-6 rounded-lg shadow-lg max-w-md">
+                <div className="text-red-500 text-4xl mb-4">⚠️</div>
+                <h3 className="text-lg font-semibold text-gray-800 mb-2">Error Loading Map</h3>
+                <p className="text-gray-600 mb-4">{error}</p>
+                <button
+                  onClick={fetchBinsAndRoutes}
+                  className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition"
+                >
+                  Retry
+                </button>
+              </div>
             </div>
           ) : (
             <MapContainer

@@ -41,6 +41,15 @@ app.use((req, res, next) => {
 app.use(cors());
 app.use(express.json());
 
+// Health check endpoint
+app.get('/health', (req, res) => {
+  res.status(200).json({ 
+    status: 'OK', 
+    message: 'Server is running',
+    timestamp: new Date().toISOString()
+  });
+});
+
 // Routes
 app.use('/user', userRoutes);
 app.use('/bin', binRoute);

@@ -40,4 +40,10 @@ router.get('/status/:paymentId', paymentController.getPaymentStatus);
 // Get user's payment history
 router.get('/history', paymentController.getUserPayments);
 
+// Payment webhook (no authentication required for MoMo callbacks)
+router.post('/webhook', paymentController.handlePaymentWebhook);
+
+// Test payment endpoint (for development)
+router.post('/test', authenticateToken, paymentController.testPayment);
+
 module.exports = router; 
