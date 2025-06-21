@@ -5,6 +5,8 @@ require('dotenv').config();
 const http = require('http');
 const { Server } = require('socket.io');
 require('./utils/sensorUtils'); 
+const analyticsRoutes = require('./routes/analytics');
+const routeRoutes = require('./routes/routeRoutes');
 
 const app = express();
 const prisma = new PrismaClient();
@@ -16,6 +18,8 @@ const setupSensor = require('./utils/sensorUtils');
 const paymentRoutes = require('./routes/paymentRoutes');
 const adminRoutes = require('./routes/adminRoutes');
 const chatRoutes = require('./routes/chatRoutes');
+const reportThreadRoutes = require('./routes/reportThreadRoutes');
+const webhookRoutes = require('./routes/webhookRoutes');
 
 // Log environment variables (development only)
 if (process.env.NODE_ENV === 'development') {
@@ -44,7 +48,10 @@ app.use('/sensor', sensorRoute);
 app.use('/api/payments', paymentRoutes);
 app.use('/admin', adminRoutes);
 app.use('/chat', chatRoutes);
-
+app.use('/analytics', analyticsRoutes);
+app.use('/report-thread', reportThreadRoutes);
+app.use('/webhook', webhookRoutes);
+app.use('/api/routes', routeRoutes);
 // Sample route
 app.get('/', (req, res) => {
   res.send('Smart Bin Backend API 🚮✅');
@@ -95,13 +102,24 @@ module.exports.io = io;
 // Start server
 server.listen(PORT, () => {
   console.log(`🚀 Server running on http://localhost:${PORT}`);
-  console.log('Available routes:');
-  console.log('- POST /user/forgot-password');
-  console.log('- POST /user/reset-password');
-  console.log('- POST /user/register');
-  console.log('- POST /user/login');
-  console.log('- GET /user/profile');
-  console.log('- GET /user/all');
-  console.log('- POST /chat');
-  console.log('- GET /chat/history');
+  // console.log('Available routes:');
+  // console.log('- POST /user/forgot-password');
+  // console.log('- POST /user/reset-password');
+  // console.log('- POST /user/register');
+  // console.log('- POST /user/login');
+  // console.log('- GET /user/profile');
+  // console.log('- GET /user/all');
+  // console.log('- POST /chat');
+  // console.log('- GET /chat/history');
+  // console.log('\n🔗 n8n Webhook Endpoints:');
+  // console.log('- GET /webhook/health');
+  // console.log('- GET /webhook/bins');
+  // console.log('- GET /webhook/bins/full');
+  // console.log('- GET /webhook/collections');
+  // console.log('- GET /webhook/requests/pending');
+  // console.log('- GET /webhook/reports/active');
+  // console.log('- GET /webhook/analytics/summary');
+  // console.log('\n🤖 AI Assistant Webhook Endpoints:');
+  // console.log('- POST /webhook/ai/message');
+  // console.log('- GET /webhook/ai/content');
 });

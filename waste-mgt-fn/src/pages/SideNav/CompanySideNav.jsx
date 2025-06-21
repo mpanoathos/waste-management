@@ -12,7 +12,7 @@ const CompanySideNav = () => {
     { path: '/company-dashboard', icon: <FaBuilding />, label: 'Dashboard' },
     { path: '/map-view', icon: <FaMap />, label: 'Map View' },
     { path: '/bin-management', icon: <FaTrash />, label: 'Bin Management' },
-    { path: '/route-optimization', icon: <FaRoute />, label: 'Route Optimization' },
+    { path: '/my-routes', icon: <FaRoute />, label: 'My Routes' },
     { path: '/company-analytics', icon: <FaChartBar />, label: 'Analytics' },
     { path: '/company-collection-history', icon: <FaHistory />, label: 'Collection History' },
   ];

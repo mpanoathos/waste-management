@@ -11,29 +11,47 @@ const Signup = () => {
     const [name, setName] = useState("");
     const [userRole, setUserRole] = useState("USER");
     const [phoneNumber, setPhoneNumber] = useState("");
-    const [address, setAddress] = useState("");
-    const [district, setDistrict] = useState("");
-    const [sector, setSector] = useState("");
-    const [cell, setCell] = useState("");
+    const [street, setStreet] = useState("");
+    const [neighborhood, setNeighborhood] = useState("");
+    const [city, setCity] = useState("Kigali");
     const [companyName, setCompanyName] = useState("");
     const [showPassword, setShowPassword] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const navigate = useNavigate();
 
+    // Geocode address using OpenStreetMap Nominatim
+    async function geocodeAddress(address) {
+        const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(address)}&format=json&limit=1`;
+        const res = await fetch(url, { headers: { 'User-Agent': 'waste-mgt-app/1.0' } });
+        const data = await res.json();
+        if (data.length === 0) {
+            throw new Error("Address doesn't exist");
+        }
+        return { latitude: parseFloat(data[0].lat), longitude: parseFloat(data[0].lon) };
+    }
+
     const handleSignup = async (event) => {
         event.preventDefault();
         setIsSubmitting(true);
         try {
+            const combinedAddress = `${street}, ${neighborhood}, ${city}`;
+            let coords;
+            try {
+                coords = await geocodeAddress(combinedAddress);
+            } catch (err) {
+                toast.error(err.message);
+                setIsSubmitting(false);
+                return;
+            }
             const userData = {
                 name,
                 email,
                 password,
                 role: userRole,
                 phoneNumber,
-                address,
-                district,
-                sector,
-                cell,
+                address: combinedAddress,
+                latitude: coords.latitude,
+                longitude: coords.longitude,
                 ...(userRole === "COMPANY" && {
                     companyName
                 })
@@ -188,38 +206,31 @@ const Signup = () => {
                                 </div>
                                 <input
                                     type="text"
-                                    placeholder="KK390ST"
-                                    value={address}
-                                    onChange={(e) => setAddress(e.target.value)}
+                                    placeholder="Street (e.g., KK 290 St)"
+                                    value={street}
+                                    onChange={(e) => setStreet(e.target.value)}
                                     required
                                     className="w-full pl-10 pr-3 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-transparent transition-all duration-200 hover:border-gray-400 text-gray-900 placeholder-gray-500"
                                 />
                             </div>
-
-                            <div className="grid grid-cols-3 gap-4">
+                            <div className="relative group">
                                 <input
                                     type="text"
-                                    placeholder="District"
-                                    value={district}
-                                    onChange={(e) => setDistrict(e.target.value)}
+                                    placeholder="Neighborhood (e.g., Kicukiro)"
+                                    value={neighborhood}
+                                    onChange={(e) => setNeighborhood(e.target.value)}
                                     required
-                                    className="w-full px-3 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-transparent transition-all duration-200 hover:border-gray-400 text-gray-900 placeholder-gray-500"
+                                    className="w-full pl-3 pr-3 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-transparent transition-all duration-200 hover:border-gray-400 text-gray-900 placeholder-gray-500"
                                 />
+                            </div>
+                            <div className="relative group">
                                 <input
                                     type="text"
-                                    placeholder="Sector"
-                                    value={sector}
-                                    onChange={(e) => setSector(e.target.value)}
+                                    placeholder="City (e.g., Kigali)"
+                                    value={city}
+                                    onChange={(e) => setCity(e.target.value)}
                                     required
-                                    className="w-full px-3 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-transparent transition-all duration-200 hover:border-gray-400 text-gray-900 placeholder-gray-500"
-                                />
-                                <input
-                                    type="text"
-                                    placeholder="Cell"
-                                    value={cell}
-                                    onChange={(e) => setCell(e.target.value)}
-                                    required
-                                    className="w-full px-3 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-transparent transition-all duration-200 hover:border-gray-400 text-gray-900 placeholder-gray-500"
+                                    className="w-full pl-3 pr-3 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-transparent transition-all duration-200 hover:border-gray-400 text-gray-900 placeholder-gray-500"
                                 />
                             </div>
 

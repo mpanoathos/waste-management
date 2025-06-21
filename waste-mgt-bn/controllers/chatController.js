@@ -1,14 +1,8 @@
-const { Configuration, OpenAIApi } = require('openai');
+const axios = require('axios');
 const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 
-// Initialize OpenAI configuration
-const configuration = new Configuration({
-    apiKey: process.env.OPENAI_API_KEY,
-});
-const openai = new OpenAIApi(configuration);
-
-// Fallback responses for when OpenAI is not available
+// Fallback responses for when Ollama is not available
 const fallbackResponses = [
     "I can help you with waste management questions. What would you like to know?",
     "I'm here to assist with recycling and environmental sustainability. How can I help?",
@@ -35,29 +29,65 @@ const handleChatMessage = async (req, res) => {
             }
         });
 
-        let aiResponse;
+        let aiResponse = '';
 
         try {
-            // Get AI response using OpenAI
-            const completion = await openai.createChatCompletion({
-                model: "gpt-3.5-turbo",
-                messages: [
-                    {
-                        role: "system",
-                        content: "You are a helpful assistant for a waste management system. You can help users with information about waste collection, recycling, and environmental sustainability. Keep your responses concise and relevant to waste management topics."
-                    },
-                    {
-                        role: "user",
-                        content: message
-                    }
-                ],
-                max_tokens: 150
+            // Get AI response using Ollama local API (streaming)
+            const ollamaRes = await axios({
+                method: 'post',
+                url: 'http://localhost:11434/api/chat',
+                data: {
+                    model: 'llama2', // or another model you have pulled
+                    messages: [
+                        {
+                            role: "system",
+                            content: "You are a helpful assistant for a waste management system. You can help users with information about waste collection, recycling, and environmental sustainability. Keep your responses concise and relevant to waste management topics."
+                        },
+                        {
+                            role: "user",
+                            content: message
+                        }
+                    ]
+                },
+                responseType: 'stream'
             });
 
-            aiResponse = completion.data.choices[0].message.content;
-        } catch (openaiError) {
-            console.error('OpenAI API error:', openaiError);
-            // Use a fallback response if OpenAI fails
+            let buffer = '';
+
+            await new Promise((resolve) => {
+                ollamaRes.data.on('data', (chunk) => {
+                    buffer += chunk.toString();
+                    let boundary = buffer.indexOf('\n');
+                    while (boundary !== -1) {
+                        const line = buffer.substring(0, boundary).trim();
+                        buffer = buffer.substring(boundary + 1);
+                        if (line) {
+                            try {
+                                const parsed = JSON.parse(line);
+                                if (parsed.message && parsed.message.content) {
+                                    aiResponse += parsed.message.content;
+                                }
+                                if (parsed.done) {
+                                    // End of stream
+                                    resolve();
+                                }
+                            } catch (e) {
+                                // Ignore parse errors for incomplete lines
+                            }
+                        }
+                        boundary = buffer.indexOf('\n');
+                    }
+                });
+                ollamaRes.data.on('end', resolve);
+            });
+
+            if (!aiResponse) {
+                console.error('No AI response received from Ollama.');
+                aiResponse = fallbackResponses[Math.floor(Math.random() * fallbackResponses.length)];
+            }
+        } catch (ollamaError) {
+            console.error('Ollama API error:', ollamaError);
+            // Use a fallback response if Ollama fails
             aiResponse = fallbackResponses[Math.floor(Math.random() * fallbackResponses.length)];
         }
 

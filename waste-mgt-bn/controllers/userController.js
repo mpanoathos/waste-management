@@ -7,7 +7,7 @@ const { AppError, handleError } = require('../utils/errorHandler');
 const crypto = require('crypto');
 
 exports.registerUser = async (req, res) => {
-    const { name, email, password, role, companyName } = req.body;
+    const { name, email, password, role, companyName, address, latitude, longitude } = req.body;
   
     try {
       const hashedPassword = await bcrypt.hash(password, 10);
@@ -19,7 +19,10 @@ exports.registerUser = async (req, res) => {
           password: hashedPassword,
           role,
           companyName: role === 'COMPANY' ? companyName : null,
-          approvalStatus: role === 'COMPANY' ? 'PENDING' : 'APPROVED'
+          approvalStatus: role === 'COMPANY' ? 'PENDING' : 'APPROVED',
+          address,
+          latitude,
+          longitude,
         },
       });
       
@@ -143,13 +146,12 @@ exports.getAllUsersWithRoles = async (req, res) => {
         email: true,
         role: true,
         phoneNumber: true,
-        address: true,
-        district: true,
-        sector: true,
-        cell: true,
+        latitude: true,
+        longitude: true,
         companyName: true,
         companyType: true,
         approvalStatus: true,
+        rejectionReason: true,
         createdAt: true,
         bins: {
           select: {
@@ -590,10 +592,9 @@ exports.getCompanyCollectionHistory = async (req, res) => {
                 id: true,
                 name: true,
                 email: true,
-                address: true,
-                district: true,
-                sector: true,
-                cell: true
+                phoneNumber: true,
+                latitude: true,
+                longitude: true
               }
             }
           }
@@ -647,12 +648,10 @@ exports.updateUserProfile = async (req, res) => {
       name,
       email,
       phoneNumber,
-      address,
-      district,
-      sector,
-      cell,
       companyName,
-      companyType
+      companyType,
+      latitude,
+      longitude
     } = req.body;
 
     // Validate required fields
@@ -685,10 +684,8 @@ exports.updateUserProfile = async (req, res) => {
         name,
         email: email.toLowerCase(),
         phoneNumber,
-        address,
-        district,
-        sector,
-        cell,
+        latitude,
+        longitude,
         ...(req.user.role === 'COMPANY' && {
           companyName,
           companyType
@@ -764,7 +761,8 @@ exports.getPendingCompanies = async (req, res) => {
         companyName: true,
         companyType: true,
         phoneNumber: true,
-        address: true,
+        latitude: true,
+        longitude: true,
         createdAt: true
       }
     });
@@ -786,13 +784,11 @@ exports.getAllCompanies = async (req, res) => {
         companyName: true,
         companyType: true,
         phoneNumber: true,
-        address: true,
+        latitude: true,
+        longitude: true,
         approvalStatus: true,
         rejectionReason: true,
-        createdAt: true,
-        district: true,
-        sector: true,
-        cell: true,
+        createdAt: true
       },
       orderBy: { createdAt: 'desc' }
     });
@@ -818,8 +814,7 @@ exports.getUsersForBinManagement = async (req, res) => {
             id: true,
             status: true,
             fillLevel: true,
-            location: true,
-            type: true
+            location: true
           }
         }
       },
@@ -836,8 +831,7 @@ exports.getUsersForBinManagement = async (req, res) => {
       role: user.role,
       binStatus: user.bins && user.bins.length > 0 ? user.bins[0].status : 'EMPTY',
       binFillLevel: user.bins && user.bins.length > 0 ? user.bins[0].fillLevel : 0,
-      binLocation: user.bins && user.bins.length > 0 ? user.bins[0].location : 'Unknown',
-      binType: user.bins && user.bins.length > 0 ? user.bins[0].type : 'ORGANIC'
+      binLocation: user.bins && user.bins.length > 0 ? user.bins[0].location : 'Unknown'
     }));
 
     res.status(200).json({ 

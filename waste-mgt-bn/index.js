@@ -3,6 +3,8 @@ const cors = require('cors');
 const dotenv = require('dotenv');
 const userRoutes = require('./routes/userRoutes');
 const chatRoutes = require('./routes/chatRoutes');
+const reportRoutes = require('./routes/reportRoutes');
+const reportThreadRoutes = require('./routes/reportThreadRoutes');
 
 // Load environment variables
 dotenv.config();
@@ -21,6 +23,8 @@ app.get('/health', (req, res) => {
 // Routes
 app.use('/user', userRoutes);
 app.use('/chat', chatRoutes);
+app.use('/report', reportRoutes);
+app.use('/report-thread', reportThreadRoutes);
 
 // Error handling middleware
 app.use((err, req, res, next) => {

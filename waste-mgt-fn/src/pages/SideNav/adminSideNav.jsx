@@ -1,4 +1,4 @@
-import { FaUser, FaCarSide, FaBuilding, FaRoute, FaChartBar, FaSignOutAlt, FaHome } from 'react-icons/fa';
+import { FaUser, FaCarSide, FaBuilding, FaRoute, FaChartBar, FaSignOutAlt, FaHome, FaLifeRing } from 'react-icons/fa';
 import { Link, useLocation } from 'react-router-dom';
 
 const AdminSideNav = () => {
@@ -12,9 +12,9 @@ const AdminSideNav = () => {
     { path: '/admin-dashboard', icon: <FaHome />, label: 'Dashboard' },
     { path: '/user-management', icon: <FaUser />, label: 'Users' },
     { path: '/company-management', icon: <FaBuilding />, label: 'Companies' },
-    { path: '/route-management', icon: <FaRoute />, label: 'Routes' },
-    { path: '/driver-management', icon: <FaCarSide />, label: 'Drivers' },
+    { path: '/route-management', icon: <FaRoute />, label: 'Route Management' },
     { path: '/admin-analytics', icon: <FaChartBar />, label: 'Analytics' },
+    { path: '/admin-report-threads', icon: <FaLifeRing />, label: 'Support Threads' },
   ];
 
   return (

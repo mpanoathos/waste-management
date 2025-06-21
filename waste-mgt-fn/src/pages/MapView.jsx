@@ -1,20 +1,68 @@
 import React, { useState, useEffect } from 'react';
-import { GoogleMap, LoadScript, Marker, Polyline } from '@react-google-maps/api';
+import { MapContainer, TileLayer, Marker, Popup, Polyline } from 'react-leaflet';
+import L from 'leaflet';
+import 'leaflet/dist/leaflet.css';
 import axios from 'axios';
 import { toast } from 'react-toastify';
 import SideNav from './SideNav/SideNav';
 import LoadingSpinner from '../components/LoadingSpinner';
-import { FaFilter, FaTrash, FaCheckCircle, FaExclamationTriangle } from 'react-icons/fa';
+import { FaFilter, FaTrash, FaCheckCircle, FaExclamationTriangle, FaRoute, FaMapMarkerAlt } from 'react-icons/fa';
 import CompanySideNav from './SideNav/CompanySideNav';
+import { fetchMyRoutes } from '../utils/api';
 
-// Get API key from environment variable
-const GOOGLE_MAPS_API_KEY = process.env.REACT_APP_GOOGLE_MAPS_API_KEY;
+// Custom SVG icons for bin statuses
+const binIcons = {
+  FULL: new L.Icon({
+    iconUrl: 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 48 48"><circle cx="24" cy="24" r="21" fill="%23ff0000" stroke="black" stroke-width="3"/><text x="24" y="32" font-size="21" text-anchor="middle" fill="white" font-family="Arial" font-weight="bold">F</text></svg>',
+    iconSize: [48, 48],
+    iconAnchor: [24, 48],
+    popupAnchor: [0, -48]
+  }),
+  HALF_FULL: new L.Icon({
+    iconUrl: 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 48 48"><circle cx="24" cy="24" r="21" fill="%23ffcc00" stroke="black" stroke-width="3"/><text x="24" y="32" font-size="21" text-anchor="middle" fill="black" font-family="Arial" font-weight="bold">H</text></svg>',
+    iconSize: [48, 48],
+    iconAnchor: [24, 48],
+    popupAnchor: [0, -48]
+  }),
+  EMPTY: new L.Icon({
+    iconUrl: 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 48 48"><circle cx="24" cy="24" r="21" fill="%2300cc44" stroke="black" stroke-width="3"/><text x="24" y="32" font-size="21" text-anchor="middle" fill="white" font-family="Arial" font-weight="bold">E</text></svg>',
+    iconSize: [48, 48],
+    iconAnchor: [24, 48],
+    popupAnchor: [0, -48]
+  }),
+  COLLECTED: new L.Icon({
+    iconUrl: 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 48 48"><circle cx="24" cy="24" r="21" fill="%23cccccc" stroke="black" stroke-width="3"/><text x="24" y="32" font-size="21" text-anchor="middle" fill="black" font-family="Arial" font-weight="bold">C</text></svg>',
+    iconSize: [48, 48],
+    iconAnchor: [24, 48],
+    popupAnchor: [0, -48]
+  })
+};
+
+// Add a special icon for the current user's bins
+const userBinIcon = new L.Icon({
+  iconUrl: 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="54" height="54" viewBox="0 0 54 54"><circle cx="27" cy="27" r="24" fill="%23007bff" stroke="black" stroke-width="3"/><text x="27" y="36" font-size="24" text-anchor="middle" fill="white" font-family="Arial" font-weight="bold">*</text></svg>',
+  iconSize: [54, 54],
+  iconAnchor: [27, 54],
+  popupAnchor: [0, -54]
+});
+
+// Helper to normalize status
+const getStatusKey = (status) => {
+  if (!status) return '';
+  const s = status.toUpperCase();
+  if (s === 'PARTIAL' || s === 'HALF_FULL' || s === 'HALF') return 'HALF_FULL';
+  if (s === 'FULL') return 'FULL';
+  if (s === 'EMPTY') return 'EMPTY';
+  if (s === 'COLLECTED') return 'COLLECTED';
+  return s;
+};
 
 const MapView = () => {
   const [loading, setLoading] = useState(true);
   const [bins, setBins] = useState([]);
+  const [routes, setRoutes] = useState([]);
   const [selectedBin, setSelectedBin] = useState(null);
-  const [collectionRoutes, setCollectionRoutes] = useState([]);
+  const [showRoutes, setShowRoutes] = useState(true);
   const [filters, setFilters] = useState({
     status: 'ALL',
     lastCollected: 'ALL'
@@ -27,45 +75,37 @@ const MapView = () => {
     lng: 30.0619
   };
 
-  const mapContainerStyle = {
-    width: '100%',
-    height: 'calc(100vh - 200px)'
-  };
-
-  const mapOptions = {
-    disableDefaultUI: false,
-    zoomControl: true,
-    streetViewControl: true,
-    scaleControl: true,
-    mapTypeControl: true,
-    fullscreenControl: true
-  };
+  // Get current user ID from localStorage
+  const currentUserId = JSON.parse(localStorage.getItem('user'))?.id;
 
   useEffect(() => {
     fetchBinsAndRoutes();
-    // Set up polling for real-time updates
-    const interval = setInterval(fetchBinsAndRoutes, 30000); // Update every 30 seconds
+    const interval = setInterval(fetchBinsAndRoutes, 30000);
     return () => clearInterval(interval);
   }, []);
 
   const fetchBinsAndRoutes = async () => {
     try {
       setLoading(true);
-      const [binsResponse, routesResponse] = await Promise.all([
-        axios.get('http://localhost:5000/api/bins', {
-          headers: {  
-            Authorization: `Bearer ${localStorage.getItem('token')}`
-          }
-        }),
-        axios.get('http://localhost:5000/api/routes', {
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem('token')}`
-          }
-        })
-      ]);
-
-      setBins(binsResponse.data.bins);
-      setCollectionRoutes(routesResponse.data.routes);
+      const token = localStorage.getItem('token');
+      
+      // Fetch bins
+      const binsResponse = await axios.get('http://localhost:5000/bin', {
+        headers: {  
+          Authorization: `Bearer ${token}`
+        }
+      });
+      
+      setBins(binsResponse.data.bins || []);
+      
+      // Fetch company routes
+      try {
+        const routesResponse = await fetchMyRoutes(token);
+        setRoutes(routesResponse.data.routes || []);
+      } catch (routeError) {
+        console.log('Routes not available:', routeError.message);
+        setRoutes([]);
+      }
     } catch (error) {
       toast.error('Failed to fetch map data');
       console.error('Error fetching map data:', error);
@@ -78,28 +118,13 @@ const MapView = () => {
     setSelectedBin(bin);
   };
 
-  const getBinIcon = (status) => {
-    const icons = {
-      EMPTY: '🟢',
-      HALF_FULL: '🟡',
-      FULL: '🔴',
-      COLLECTED: '⚪'
-    };
-    return icons[status] || '⚪';
-  };
-
-  const getRouteColor = (route) => {
-    const colors = ['#FF0000', '#00FF00', '#0000FF', '#FFA500', '#800080'];
-    return colors[route.id % colors.length];
-  };
-
   const filteredBins = bins.filter(bin => {
-    if (filters.status !== 'ALL' && bin.status !== filters.status) return false;
+    const normalizedBinStatus = getStatusKey(bin.status);
+    if (filters.status !== 'ALL' && normalizedBinStatus !== filters.status) return false;
     if (filters.lastCollected !== 'ALL') {
       const lastCollected = new Date(bin.lastCollected);
       const now = new Date();
       const daysDiff = Math.floor((now - lastCollected) / (1000 * 60 * 60 * 24));
-      
       if (filters.lastCollected === 'TODAY' && daysDiff > 0) return false;
       if (filters.lastCollected === 'WEEK' && daysDiff > 7) return false;
       if (filters.lastCollected === 'MONTH' && daysDiff > 30) return false;
@@ -109,12 +134,47 @@ const MapView = () => {
 
   const getStatusCounts = () => {
     return bins.reduce((acc, bin) => {
-      acc[bin.status] = (acc[bin.status] || 0) + 1;
+      const key = getStatusKey(bin.status);
+      acc[key] = (acc[key] || 0) + 1;
       return acc;
     }, {});
   };
 
   const statusCounts = getStatusCounts();
+
+  // Autofix handler for missing coordinates
+  const handleAutoFixBins = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      
+      // Use the new backend endpoint to update coordinates
+      const response = await fetch('http://localhost:5000/bin/update-coordinates', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to update coordinates');
+      }
+      
+      const result = await response.json();
+      toast.success(result.message);
+      
+      // Refresh bins after updating coordinates
+      fetchBinsAndRoutes();
+    } catch (error) {
+      toast.error(`Error updating coordinates: ${error.message}`);
+      console.error('Error updating coordinates:', error);
+    }
+  };
+
+  const handleUpdateCoordinates = () => {
+    toast.info('Coordinate fixing process started. This might take a moment.');
+    handleAutoFixBins();
+  };
 
   return (
     <div className="flex h-screen bg-gray-100">
@@ -123,15 +183,34 @@ const MapView = () => {
         <div className="bg-white shadow-sm p-4">
           <div className="flex justify-between items-center">
             <h1 className="text-2xl font-bold text-gray-800">Bin Monitoring Dashboard</h1>
-            <button
-              onClick={() => setShowFilters(!showFilters)}
-              className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-            >
-              <FaFilter className="mr-2" />
-              Filters
-            </button>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setShowRoutes(!showRoutes)}
+                className={`flex items-center px-4 py-2 rounded-lg transition ${
+                  showRoutes 
+                    ? 'bg-green-600 text-white hover:bg-green-700' 
+                    : 'bg-gray-300 text-gray-700 hover:bg-gray-400'
+                }`}
+              >
+                <FaRoute className="mr-2" />
+                {showRoutes ? 'Hide Routes' : 'Show Routes'}
+              </button>
+              <button
+                onClick={() => setShowFilters(!showFilters)}
+                className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+              >
+                <FaFilter className="mr-2" />
+                Filters
+              </button>
+              <button
+                onClick={handleUpdateCoordinates}
+                className="flex items-center px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700"
+              >
+                <FaMapMarkerAlt className="mr-2" />
+                Fix Coordinates
+              </button>
+            </div>
           </div>
-          
           {/* Status Summary */}
           <div className="mt-4 grid grid-cols-4 gap-4">
             <div className="bg-red-100 p-3 rounded-lg">
@@ -164,49 +243,67 @@ const MapView = () => {
             </div>
           </div>
         </div>
-        
         <div className="flex-1 relative overflow-hidden">
           {loading ? (
             <div className="absolute inset-0 flex items-center justify-center bg-gray-100 bg-opacity-75 z-10">
               <LoadingSpinner size="large" />
             </div>
           ) : (
-            <LoadScript googleMapsApiKey={GOOGLE_MAPS_API_KEY}>
-              <GoogleMap
-                mapContainerStyle={mapContainerStyle}
-                center={defaultCenter}
-                zoom={13}
-                options={mapOptions}
-              >
-                {/* Bin Markers */}
-                {filteredBins.map((bin) => (
-                  <Marker
-                    key={bin.id}
-                    position={{ lat: bin.latitude, lng: bin.longitude }}
-                    onClick={() => handleBinClick(bin)}
-                    icon={{
-                      url: `data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="%23${getBinIcon(bin.status).replace('#', '')}"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg>`,
-                      scaledSize: new window.google.maps.Size(30, 30)
-                    }}
-                  />
-                ))}
-
-                {/* Collection Routes */}
-                {collectionRoutes.map((route) => (
-                  <Polyline
-                    key={route.id}
-                    path={route.coordinates}
-                    options={{
-                      strokeColor: getRouteColor(route),
-                      strokeOpacity: 0.8,
-                      strokeWeight: 3
-                    }}
-                  />
-                ))}
-              </GoogleMap>
-            </LoadScript>
+            <MapContainer
+              center={[defaultCenter.lat, defaultCenter.lng]}
+              zoom={13}
+              style={{ width: '100%', height: 'calc(100vh - 200px)' }}
+            >
+              <TileLayer
+                url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                attribution="&copy; OpenStreetMap contributors"
+              />
+              {/* Bin Markers */}
+              {filteredBins
+                .filter(bin => !isNaN(Number(bin.latitude)) && !isNaN(Number(bin.longitude)))
+                .map((bin) => {
+                  const statusKey = getStatusKey(bin.status);
+                  const icon = bin.userId === currentUserId ? userBinIcon : (binIcons[statusKey] || binIcons.EMPTY);
+                  
+                  return (
+                    <Marker
+                      key={bin.id}
+                      position={[Number(bin.latitude), Number(bin.longitude)]}
+                      icon={icon}
+                      eventHandlers={{ click: () => handleBinClick(bin) }}
+                    >
+                      <Popup>
+                        <div>
+                          <strong>Status:</strong> {getStatusKey(bin.status)}<br />
+                          <strong>Last Collected:</strong> {bin.lastCollected ? new Date(bin.lastCollected).toLocaleDateString() : 'N/A'}<br />
+                          <strong>Location:</strong> {bin.address || bin.location}<br />
+                          {bin.userId === currentUserId && <span style={{color: '#007bff', fontWeight: 'bold'}}>Your Bin</span>}
+                        </div>
+                      </Popup>
+                    </Marker>
+                  );
+                })}
+              
+              {/* Route Polylines */}
+              {showRoutes && routes.map((route, index) => (
+                <Polyline
+                  key={route.id}
+                  positions={route.coordinates.map(coord => [coord.lat, coord.lng])}
+                  color={`hsl(${index * 60}, 70%, 50%)`}
+                  weight={4}
+                  opacity={0.8}
+                >
+                  <Popup>
+                    <div>
+                      <strong>Route:</strong> {route.name}<br />
+                      <strong>Points:</strong> {route.coordinates.length}<br />
+                      <strong>Created:</strong> {new Date(route.createdAt).toLocaleDateString()}
+                    </div>
+                  </Popup>
+                </Polyline>
+              ))}
+            </MapContainer>
           )}
-
           {/* Filters Panel */}
           {showFilters && (
             <div className="absolute top-4 right-4 w-80 bg-white rounded-lg shadow-lg p-4">
@@ -254,7 +351,6 @@ const MapView = () => {
               </div>
             </div>
           )}
-
           {/* Bin Details Sidebar */}
           {selectedBin && (
             <div className="absolute top-4 right-4 w-80 bg-white rounded-lg shadow-lg p-4">
@@ -270,12 +366,11 @@ const MapView = () => {
               <div className="space-y-2">
                 <p><span className="font-medium">ID:</span> {selectedBin.id}</p>
                 <p><span className="font-medium">Status:</span> {selectedBin.status}</p>
-                <p><span className="font-medium">Last Collection:</span> {new Date(selectedBin.lastCollected).toLocaleDateString()}</p>
-                <p><span className="font-medium">Location:</span> {selectedBin.address}</p>
+                <p><span className="font-medium">Last Collection:</span> {selectedBin.lastCollected ? new Date(selectedBin.lastCollected).toLocaleDateString() : 'N/A'}</p>
+                <p><span className="font-medium">Location:</span> {selectedBin.address || selectedBin.location}</p>
                 <div className="mt-4">
                   <button
                     onClick={() => {
-                      // Handle collection request
                       toast.info('Collection request sent');
                     }}
                     className="w-full bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"

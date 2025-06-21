@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { isAuthenticated } from '../utils/auth';
 import { FaTrash, FaMapMarkerAlt, FaClock, FaExclamationTriangle, FaCheckCircle, FaHistory } from 'react-icons/fa';
 import { io } from 'socket.io-client';
+import { toast } from 'react-toastify';
 
 const socket = io('http://localhost:5000');
 
@@ -11,6 +12,7 @@ const BinStatus = () => {
   const [bin, setBin] = useState(null);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
+  const [hasPendingRequest, setHasPendingRequest] = useState(false);
   const navigate = useNavigate();
 
   const fetchBin = async () => {
@@ -42,6 +44,19 @@ const BinStatus = () => {
     }
   };
 
+  const checkPendingRequest = async (binId) => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch(`http://localhost:5000/bin/${binId}/pending-request`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const data = await response.json();
+      setHasPendingRequest(data.hasPending);
+    } catch (err) {
+      setHasPendingRequest(false);
+    }
+  };
+
   useEffect(() => {
     if (!isAuthenticated()) {
       navigate('/');
@@ -68,6 +83,12 @@ const BinStatus = () => {
     };
   }, [navigate]);
 
+  useEffect(() => {
+    if (bin && bin.id) {
+      checkPendingRequest(bin.id);
+    }
+  }, [bin]);
+
   const getStatusColor = (status) => {
     switch (status) {
       case 'FULL':
@@ -91,6 +112,31 @@ const BinStatus = () => {
         return <FaCheckCircle className="text-green-600" />;
       default:
         return <FaTrash className="text-gray-600" />;
+    }
+  };
+
+  const handleAlertCompany = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch(`http://localhost:5000/bin/${bin.id}/alert-company`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+      const data = await response.json();
+      if (response.ok) {
+        toast.success('The company has been alerted for collection!');
+        setHasPendingRequest(true);
+      } else {
+        toast.error(data.message || 'Failed to alert company');
+        if (data.message && data.message.includes('pending collection request')) {
+          setHasPendingRequest(true);
+        }
+      }
+    } catch (err) {
+      toast.error('Error alerting company');
     }
   };
 
@@ -167,15 +213,19 @@ const BinStatus = () => {
                     </p>
                   </div>
                 </div>
-
-                <div className="flex items-center p-4 bg-gray-50 rounded-lg">
-                  <FaTrash className="text-gray-600 mr-3" />
-                  <div>
-                    <p className="text-sm text-gray-600">Type</p>
-                    <p className="font-medium text-gray-800">{bin.type}</p>
-                  </div>
-                </div>
               </div>
+
+              {bin.status === 'FULL' && !hasPendingRequest && (
+                <button
+                  className="mt-6 px-6 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+                  onClick={handleAlertCompany}
+                >
+                  Alert Company
+                </button>
+              )}
+              {bin.status === 'FULL' && hasPendingRequest && (
+                <div className="mt-6 text-blue-700 font-semibold">A collection request is already pending for this bin.</div>
+              )}
             </div>
           )}
         </div>

@@ -14,10 +14,8 @@ model User {
   password  String
   role      Role     @default(USER)
   phoneNumber String?
-  address   String?
-  district  String?
-  sector    String?
-  cell      String?
+  latitude Float?
+  longitude Float?
   companyName String? @default("")
   companyType String?
   approvalStatus ApprovalStatus @default(PENDING)
@@ -29,12 +27,16 @@ model User {
   resetTokenExpiry DateTime?
   createdAt DateTime @default(now())
   chatMessages ChatMessage[]
+  collectionRequests CollectionRequest[]
+  reports   ReportThread[]
+  routes    Route[]   // Add this line to link routes to companies
 }
 
 model Bin {
   id         Int         @id @default(autoincrement())
   location   String
-  type       WasteType // recyclable, organic
+  latitude   Float?
+  longitude  Float?
   fillLevel  Int         @default(0) // percentage (0 - 100)
   status     BinStatus   @default(EMPTY)
   user       User        @relation(fields: [userId], references: [id])
@@ -43,6 +45,10 @@ model Bin {
   collectionHistory CollectionHistory[]
   createdAt  DateTime    @default(now())
   updatedAt  DateTime    @updatedAt
+  collectionRequests CollectionRequest[]
+  // AI-generated content tracking
+  aiGenerated Boolean    @default(false)
+  metadata    Json?      // Store additional AI metadata
 }
 
 model SensorLog {
@@ -83,6 +89,59 @@ model ChatMessage {
     createdAt DateTime @default(now())
     userId    Int
     user      User     @relation(fields: [userId], references: [id])
+    // AI-generated content tracking
+    aiGenerated Boolean @default(false)
+    metadata   Json?    // Store additional AI metadata
+}
+
+model CollectionRequest {
+  id        Int      @id @default(autoincrement())
+  bin       Bin     @relation(fields: [binId], references: [id])
+  binId     Int
+  user      User    @relation(fields: [userId], references: [id])
+  userId    Int
+  status    RequestStatus @default(PENDING)
+  createdAt DateTime @default(now())
+  // AI-generated content tracking
+  aiGenerated Boolean @default(false)
+  metadata   Json?    // Store additional AI metadata
+  reason     String?  // Reason for collection request
+  priority   String   @default("NORMAL") // LOW, NORMAL, HIGH, URGENT
+}
+
+model ReportThread {
+  id        Int             @id @default(autoincrement())
+  user      User            @relation(fields: [userId], references: [id])
+  userId    Int
+  subject   String
+  status    ThreadStatus    @default(OPEN)
+  createdAt DateTime        @default(now())
+  messages  ReportMessage[]
+  // AI-generated content tracking
+  aiGenerated Boolean       @default(false)
+  metadata   Json?          // Store additional AI metadata
+}
+
+model ReportMessage {
+  id        Int          @id @default(autoincrement())
+  thread    ReportThread @relation(fields: [threadId], references: [id])
+  threadId  Int
+  senderId  Int          // user or admin
+  senderRole String      // 'USER' or 'ADMIN'
+  content   String
+  createdAt DateTime     @default(now())
+  // AI-generated content tracking
+  aiGenerated Boolean    @default(false)
+  metadata   Json?       // Store additional AI metadata
+}
+
+model Route {
+  id          Int      @id @default(autoincrement())
+  name        String
+  coordinates Json     // Array of { lat, lng } objects
+  company     User?    @relation(fields: [companyId], references: [id])
+  companyId   Int?
+  createdAt   DateTime @default(now())
 }
 
 enum Role {
@@ -112,4 +171,15 @@ enum ApprovalStatus {
   PENDING
   APPROVED
   REJECTED
+}
+
+enum RequestStatus {
+  PENDING
+  COMPLETED
+  REJECTED
+}
+
+enum ThreadStatus {
+  OPEN
+  CLOSED
 }

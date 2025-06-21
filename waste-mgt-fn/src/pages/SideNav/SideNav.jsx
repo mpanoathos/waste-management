@@ -15,6 +15,7 @@ const SideNav = () => {
     { path: '/payments', icon: <FaCreditCard />, label: 'Payments' },
     { path: '/profile', icon: <FaUser />, label: 'Profile' },
     { path: '/chat', icon: <FaRobot />, label: 'AI Assistant' },
+    { path: '/report-threads', icon: <FaClock />, label: 'Support' },
   ];
 
   return (

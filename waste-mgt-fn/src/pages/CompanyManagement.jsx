@@ -6,7 +6,7 @@ import { FaCheck, FaTimes, FaSpinner, FaBuilding, FaEnvelope, FaPhone, FaMapMark
 const CompanyManagement = () => {
     const [companies, setCompanies] = useState([]);
     const [loading, setLoading] = useState(true);
-    const [filter, setFilter] = useState('PENDING'); // PENDING, APPROVED, REJECTED, ALL
+    const [filter, setFilter] = useState('ALL'); // PENDING, APPROVED, REJECTED, ALL
     const [showConfirmationModal, setShowConfirmationModal] = useState(false);
     const [showDetailsModal, setShowDetailsModal] = useState(false);
     const [selectedCompany, setSelectedCompany] = useState(null);

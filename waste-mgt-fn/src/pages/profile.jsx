@@ -5,11 +5,25 @@ import SideNav from './SideNav/SideNav';
 import { FaUser, FaEnvelope, FaPhone, FaMapMarkerAlt, FaBuilding, FaEdit, FaSave, FaTimes } from 'react-icons/fa';
 import { toast } from 'react-toastify';
 
+// Geocode address using OpenStreetMap Nominatim
+async function geocodeAddress(address) {
+  const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(address)}&format=json&limit=1`;
+  const res = await fetch(url, { headers: { 'User-Agent': 'waste-mgt-app/1.0' } });
+  const data = await res.json();
+  if (data.length === 0) {
+    throw new Error("Address doesn't exist");
+  }
+  return { latitude: parseFloat(data[0].lat), longitude: parseFloat(data[0].lon) };
+}
+
 const Profile = () => {
   const [user, setUser] = useState(null); // State to store user data
   const [error, setError] = useState('');
   const [isEditing, setIsEditing] = useState(false);
   const [editedUser, setEditedUser] = useState(null);
+  const [street, setStreet] = useState("");
+  const [neighborhood, setNeighborhood] = useState("");
+  const [city, setCity] = useState("Kigali");
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -37,6 +51,12 @@ const Profile = () => {
         const data = await response.json();
         setUser(data.user); // Set user data
         setEditedUser(data.user);
+        if (data.user && data.user.address) {
+          const parts = data.user.address.split(',').map(s => s.trim());
+          setStreet(parts[0] || "");
+          setNeighborhood(parts[1] || "");
+          setCity(parts[2] || "Kigali");
+        }
       } catch (err) {
         setError(err.message);
         toast.error('Failed to load profile');
@@ -57,14 +77,32 @@ const Profile = () => {
 
   const handleSave = async () => {
     try {
+      const combinedAddress = `${street}, ${neighborhood}, ${city}`;
+      let coords;
+      try {
+        coords = await geocodeAddress(combinedAddress);
+      } catch (err) {
+        toast.error(err.message);
+        return;
+      }
       const token = localStorage.getItem('token');
+      const updateData = {
+        name: editedUser.name,
+        email: editedUser.email,
+        phoneNumber: editedUser.phoneNumber,
+        companyName: editedUser.companyName,
+        companyType: editedUser.companyType,
+        address: combinedAddress,
+        latitude: coords.latitude,
+        longitude: coords.longitude
+      };
       const response = await fetch('http://localhost:5000/user/profile', {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify(editedUser),
+        body: JSON.stringify(updateData),
       });
 
       if (!response.ok) {
@@ -111,12 +149,29 @@ const Profile = () => {
     );
   }
 
+  // Show alert if user has address but no coordinates
+  const needsGeocoding = user.address && (user.latitude == null || user.longitude == null);
+
   return (
     <div className="flex h-screen bg-gray-100">
       <SideNav />
       <div className="flex-1 p-8">
         <div className="max-w-4xl mx-auto">
           <div className="bg-white rounded-lg shadow-lg overflow-hidden">
+            {/* Alert for missing coordinates */}
+            {needsGeocoding && (
+              <div className="bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700 p-4 flex items-center justify-between">
+                <p><strong>Notice:</strong> Please update and save your address to enable map features.</p>
+                {!isEditing && (
+                  <button
+                    onClick={handleEdit}
+                    className="ml-4 px-4 py-2 bg-yellow-500 text-white rounded hover:bg-yellow-600 transition-colors"
+                  >
+                    Update Now
+                  </button>
+                )}
+              </div>
+            )}
             {/* Profile Header */}
             <div className="bg-gradient-to-r from-blue-600 to-blue-800 p-6 text-white">
               <div className="flex items-center justify-between">
@@ -203,51 +258,31 @@ const Profile = () => {
                     <div className="flex items-center space-x-3">
                       <FaMapMarkerAlt className="text-gray-400" />
                       {isEditing ? (
-                        <input
-                          type="text"
-                          name="address"
-                          value={editedUser.address}
-                          onChange={handleChange}
-                          className="flex-1 p-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                        />
+                        <>
+                          <input
+                            type="text"
+                            placeholder="Street (e.g., KK 290 St)"
+                            value={street}
+                            onChange={e => setStreet(e.target.value)}
+                            className="flex-1 p-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent mb-2"
+                          />
+                          <input
+                            type="text"
+                            placeholder="Neighborhood (e.g., Kicukiro)"
+                            value={neighborhood}
+                            onChange={e => setNeighborhood(e.target.value)}
+                            className="flex-1 p-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent mb-2"
+                          />
+                          <input
+                            type="text"
+                            placeholder="City (e.g., Kigali)"
+                            value={city}
+                            onChange={e => setCity(e.target.value)}
+                            className="flex-1 p-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          />
+                        </>
                       ) : (
                         <span className="text-gray-600">{user.address}</span>
-                      )}
-                    </div>
-                    <div className="grid grid-cols-3 gap-2">
-                      {isEditing ? (
-                        <>
-                          <input
-                            type="text"
-                            name="district"
-                            value={editedUser.district}
-                            onChange={handleChange}
-                            placeholder="District"
-                            className="p-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                          />
-                          <input
-                            type="text"
-                            name="sector"
-                            value={editedUser.sector}
-                            onChange={handleChange}
-                            placeholder="Sector"
-                            className="p-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                          />
-                          <input
-                            type="text"
-                            name="cell"
-                            value={editedUser.cell}
-                            onChange={handleChange}
-                            placeholder="Cell"
-                            className="p-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                          />
-                        </>
-                      ) : (
-                        <>
-                          <span className="text-gray-600">{user.district}</span>
-                          <span className="text-gray-600">{user.sector}</span>
-                          <span className="text-gray-600">{user.cell}</span>
-                        </>
                       )}
                     </div>
                   </div>
