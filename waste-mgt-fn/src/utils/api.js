@@ -1,7 +1,7 @@
 import axios from 'axios';
 import { toast } from 'react-toastify';
 
-const API_URL = 'http://localhost:5000/api/routes';
+const API_URL = 'http://localhost:5000';
 
 const api = axios.create({
     baseURL: API_URL,
@@ -127,5 +127,19 @@ export const fetchMyRoutes = (token) =>
 // Get all companies for dropdown
 export const fetchAllCompanies = (token) =>
   axios.get('http://localhost:5000/user/companies', { headers: { Authorization: `Bearer ${token}` } });
+
+// Fetch all payments for the current company
+export const fetchCompanyPayments = async () => {
+    try {
+        const response = await axios.get('http://localhost:5000/api/payments/company-history', {
+            headers: {
+                Authorization: `Bearer ${localStorage.getItem('token')}`
+            }
+        });
+        return response.data.payments;
+    } catch (error) {
+        throw error;
+    }
+};
 
 export default api; 

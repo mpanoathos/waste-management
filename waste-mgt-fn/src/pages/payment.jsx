@@ -69,6 +69,63 @@ const PaymentHistoryPDF = ({ payments }) => (
   </Document>
 );
 
+const InvoicePDF = ({ invoice }) => (
+    <Document>
+        <Page style={pdfStyles.body}>
+            {/* Header with logo and business name */}
+            <View style={pdfStyles.header}>
+                <View style={pdfStyles.logoBox}>
+                    {/* Replace with your logo if you have one */}
+                    <Text style={pdfStyles.logo}>WMG</Text>
+                </View>
+                <Text style={pdfStyles.businessName}>Waste Management Group</Text>
+            </View>
+            <Text style={pdfStyles.invoiceTitle}>INVOICE</Text>
+            <View style={pdfStyles.sectionRow}>
+                <View style={pdfStyles.sectionCol}>
+                    <Text style={pdfStyles.label}>Invoice Date:</Text>
+                    <Text>{invoice.date}</Text>
+                </View>
+                <View style={pdfStyles.sectionCol}>
+                    <Text style={pdfStyles.label}>Reference:</Text>
+                    <Text>{invoice.referenceId}</Text>
+                </View>
+            </View>
+            <View style={pdfStyles.section}>
+                <Text style={pdfStyles.label}>Billed To:</Text>
+                <Text>{invoice.recipient || 'Customer'}</Text>
+            </View>
+            <View style={pdfStyles.section}>
+                <Text style={pdfStyles.label}>Amount Paid:</Text>
+                <Text style={pdfStyles.amount}>RWF {invoice.amount}</Text>
+            </View>
+            <View style={pdfStyles.section}>
+                <Text style={pdfStyles.label}>Payment Status:</Text>
+                <Text>Paid</Text>
+            </View>
+            <View style={pdfStyles.thankYouBox}>
+                <Text style={pdfStyles.thankYou}>Thank you for your payment!</Text>
+            </View>
+        </Page>
+    </Document>
+);
+
+const pdfStyles = StyleSheet.create({
+    body: { padding: 32, fontFamily: 'Helvetica' },
+    header: { flexDirection: 'row', alignItems: 'center', marginBottom: 16 },
+    logoBox: { width: 48, height: 48, backgroundColor: '#2563eb', borderRadius: 24, alignItems: 'center', justifyContent: 'center', marginRight: 12 },
+    logo: { color: 'white', fontSize: 24, fontWeight: 'bold', letterSpacing: 2 },
+    businessName: { fontSize: 18, fontWeight: 'bold', color: '#2563eb' },
+    invoiceTitle: { fontSize: 28, fontWeight: 'bold', textAlign: 'center', marginVertical: 16, color: '#111827', letterSpacing: 2 },
+    section: { marginVertical: 8 },
+    sectionRow: { flexDirection: 'row', justifyContent: 'space-between', marginVertical: 8 },
+    sectionCol: { flexDirection: 'column', flex: 1 },
+    label: { fontSize: 12, color: '#6b7280', marginBottom: 2 },
+    amount: { fontSize: 20, fontWeight: 'bold', color: '#16a34a', marginTop: 2 },
+    thankYouBox: { marginTop: 32, padding: 12, backgroundColor: '#f0fdf4', borderRadius: 8 },
+    thankYou: { textAlign: 'center', color: '#16a34a', fontSize: 16, fontWeight: 'bold' },
+});
+
 const Payment = () => {
     const navigate = useNavigate();
     const [loading, setLoading] = useState(false);
@@ -78,6 +135,13 @@ const Payment = () => {
         phoneNumber: '',
         description: ''
     });
+    const [redirectUrl, setRedirectUrl] = useState(null);
+    const [showRedirectModal, setShowRedirectModal] = useState(false);
+    const [showPaymentDone, setShowPaymentDone] = useState(false);
+    const [processedNumber, setProcessedNumber] = useState("");
+    const [showInvoice, setShowInvoice] = useState(false);
+    const [invoiceData, setInvoiceData] = useState(null);
+    const user = JSON.parse(localStorage.getItem('user'));
 
     useEffect(() => {
         fetchPaymentHistory();
@@ -107,6 +171,8 @@ const Payment = () => {
     const handleSubmit = async (e) => {
         e.preventDefault();
         setLoading(true);
+        setRedirectUrl(null);
+        setShowRedirectModal(false);
 
         try {
             const response = await axios.post(
@@ -120,6 +186,21 @@ const Payment = () => {
             );
 
             toast.success('Payment initiated successfully');
+            setInvoiceData({
+                amount: response.data.payment.amount,
+                referenceId: response.data.payment.referenceId,
+                date: new Date().toLocaleString(),
+                recipient: user?.name || user?.email || 'Customer',
+            });
+            setShowInvoice(true);
+            setShowPaymentDone(false);
+            
+            // Handle redirect URL if provided
+            if (response.data.redirectUrl) {
+                setRedirectUrl(response.data.redirectUrl);
+                setShowRedirectModal(true);
+            }
+            
             setFormData({
                 amount: '',
                 phoneNumber: '',
@@ -131,6 +212,13 @@ const Payment = () => {
             console.error('Payment error:', error);
         } finally {
             setLoading(false);
+        }
+    };
+
+    const handleRedirectToPayment = () => {
+        if (redirectUrl) {
+            window.open(redirectUrl, '_blank');
+            setShowRedirectModal(false);
         }
     };
 
@@ -246,9 +334,6 @@ const Payment = () => {
                                                 <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                                     Amount
                                                 </th>
-                                                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                                    Status
-                                                </th>
                                             </tr>
                                         </thead>
                                         <tbody className="bg-white divide-y divide-gray-200">
@@ -260,11 +345,6 @@ const Payment = () => {
                                                     <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-900">
                                                         RWF {payment.amount.toFixed(2)}
                                                     </td>
-                                                    <td className="px-4 py-2 whitespace-nowrap text-sm">
-                                                        <span className={`font-medium ${getStatusColor(payment.status)}`}>
-                                                            {payment.status}
-                                                        </span>
-                                                    </td>
                                                 </tr>
                                             ))}
                                         </tbody>
@@ -275,6 +355,82 @@ const Payment = () => {
                     </div>
                 </div>
             </div>
+
+            {/* Redirect Modal */}
+            {showRedirectModal && redirectUrl && (
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                    <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+                        <h3 className="text-lg font-semibold mb-4">Complete Your Payment</h3>
+                        <div className="flex space-x-3">
+                            <button
+                                onClick={handleRedirectToPayment}
+                                className="flex-1 bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            >
+                                Complete Payment
+                            </button>
+                            <button
+                                onClick={() => setShowRedirectModal(false)}
+                                className="flex-1 bg-gray-300 text-gray-700 py-2 px-4 rounded-lg hover:bg-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-500"
+                            >
+                                Cancel
+                            </button>
+                        </div>
+                        <p className="text-xs text-gray-500 mt-3">
+                            You can also copy and paste this URL: <br />
+                            <span className="break-all">{redirectUrl}</span>
+                        </p>
+                    </div>
+                </div>
+            )}
+
+            {showPaymentDone && (
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                    <div className="bg-white rounded-2xl shadow-lg p-8 max-w-sm w-full mx-4 text-center animate-fade-in">
+                        <div className="flex flex-col items-center justify-center">
+                            <div className="bg-green-100 rounded-full w-20 h-20 flex items-center justify-center mb-4 animate-pop">
+                                <svg className="w-12 h-12 text-green-500" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                                </svg>
+                            </div>
+                            <h3 className="text-2xl font-bold mb-2 text-green-700">Payment Successful!</h3>
+                            <p className="text-gray-600 mb-2">Your payment has been processed.</p>
+                            <p className="text-gray-800 font-semibold mb-4">Number: {processedNumber}</p>
+                            <button
+                                onClick={() => setShowPaymentDone(false)}
+                                className="mt-2 bg-green-600 text-white py-2 px-6 rounded-lg hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-400 transition"
+                            >
+                                Close
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {showInvoice && invoiceData && (
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                    <div className="bg-white rounded-2xl shadow-lg p-8 max-w-md w-full mx-4 text-center animate-fade-in">
+                        <h2 className="text-2xl font-bold mb-4 text-gray-800">Payment Invoice</h2>
+                        <div className="mb-4 text-left">
+                            <p><span className="font-semibold">Reference:</span> {invoiceData.referenceId}</p>
+                            <p><span className="font-semibold">Amount:</span> RWF {invoiceData.amount}</p>
+                            <p><span className="font-semibold">Date:</span> {invoiceData.date}</p>
+                        </div>
+                        <PDFDownloadLink
+                            document={<InvoicePDF invoice={invoiceData} />}
+                            fileName={`invoice-${invoiceData.referenceId}.pdf`}
+                            className="inline-block bg-blue-600 text-white py-2 px-6 rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-400 transition mb-2"
+                        >
+                            {({ loading }) => (loading ? 'Generating PDF...' : 'Download PDF')}
+                        </PDFDownloadLink>
+                        <button
+                            onClick={() => setShowInvoice(false)}
+                            className="mt-2 bg-gray-600 text-white py-2 px-6 rounded-lg hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-400 transition"
+                        >
+                            Close
+                        </button>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

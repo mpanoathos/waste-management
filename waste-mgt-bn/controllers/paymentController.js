@@ -1,62 +1,93 @@
 const { PrismaClient } = require('@prisma/client');
-const momoService = require('../utils/momoService');
 const { AppError } = require('../utils/errorHandler');
+const crypto =require('crypto');
+const axios = require('axios');
+
 const prisma = new PrismaClient();
 
-exports.initiatePayment = async (req, res) => {
+// This function generates a unique reference for each transaction.
+const generateReference = () => `WMG-${Date.now()}-${crypto.randomBytes(4).toString('hex')}`;
+
+exports.initiatePayment = async (req, res, next) => {
     try {
         const { amount, phoneNumber, description } = req.body;
-        const userId = req.user.id;
+        const { id: userId } = req.user;
 
-        // Validate input
         if (!amount || !phoneNumber) {
-            throw new AppError('Amount and phone number are required', 400);
+            return next(new AppError('Amount and phone number are required', 400));
         }
 
-        // Create payment record
+        const tx_ref = generateReference();
+
+        // Debug logging for env variables
+        console.log('PAYSPACK_APP_ID:', process.env.PAYSPACK_APP_ID);
+        console.log('PAYSPACK_APP_SECRET:', process.env.PAYSPACK_APP_SECRET ? 'set' : 'not set');
+        // 1. Obtain access token
+        const PAYSPACK_APP_ID = process.env.PAYSPACK_APP_ID;
+        const PAYSPACK_APP_SECRET = process.env.PAYSPACK_APP_SECRET;
+        const authResponse = await axios.post('https://payments.paypack.rw/api/auth/agents/authorize', {
+            client_id: PAYSPACK_APP_ID,
+            client_secret: PAYSPACK_APP_SECRET,
+        });
+        const accessToken = authResponse.data?.access;
+        if (!accessToken) {
+            return next(new AppError('Failed to obtain Paypack access token', 500));
+        }
+
+        // 2. Initiate cashin (deposit)
+        const response = await axios.post(
+            'https://payments.paypack.rw/api/transactions/cashin',
+            {
+                amount:parseFloat(amount),
+                number: phoneNumber,
+            },
+            {
+                headers: {
+                    'Authorization': `Bearer ${accessToken}`,
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json',
+                },
+            }
+        );
+
+        // Create a pending payment record in our database
         const payment = await prisma.payment.create({
             data: {
                 userId,
                 amount: parseFloat(amount),
                 status: 'PENDING',
-                referenceId: momoService.generateReferenceId()
-            }
-        });
-
-        // Initiate MoMo payment
-        const momoResponse = await momoService.requestToPay(
-            amount,
-            phoneNumber,
-            description || 'Waste Management Payment'
-        );
-
-        // Update payment record with MoMo reference
-        await prisma.payment.update({
-            where: { id: payment.id },
-            data: {
-                referenceId: momoResponse.referenceId
+                referenceId: tx_ref, // Use our internal reference
+                providerReference: response.data.ref, // Use Paypack transaction ref
             }
         });
 
         res.status(200).json({
-            message: 'Payment initiated successfully',
+            message: 'Payment initiated successfully. Please authorize the transaction on your phone.',
             payment: {
                 id: payment.id,
-                amount,
+                referenceId: tx_ref,
                 status: 'PENDING',
-                referenceId: momoResponse.referenceId
             }
         });
     } catch (error) {
+        if (error.response) {
+            // HTTP error from Paypack
+            console.error('Paypack error response:', error.response.data);
+            console.error('Paypack error status:', error.response.status);
+            console.error('Paypack error headers:', error.response.headers);
+        } else if (error.request) {
+            // No response received (network error, timeout, etc.)
+            console.error('No response received from Paypack:', error.request);
+        } else {
+            // Other errors (e.g., code bugs)
+            console.error('Error setting up Paypack request:', error.message);
+        }
         console.error('Payment initiation failed:', error);
-        res.status(500).json({
-            message: 'Failed to initiate payment',
-            error: error.message
-        });
+        return next(new AppError(error.message || 'Failed to initiate payment', 500));
     }
 };
 
-exports.getPaymentStatus = async (req, res) => {
+exports.getPaymentStatus = async (req, res, next) => {
     try {
         const { paymentId } = req.params;
         const userId = req.user.id;
@@ -73,14 +104,35 @@ exports.getPaymentStatus = async (req, res) => {
             throw new AppError('Payment not found', 404);
         }
 
-        // Get status from MoMo
-        const momoStatus = await momoService.getPaymentStatus(payment.referenceId);
+        // Check status with Paypack
+        const PAYSPACK_APP_ID = process.env.PAYSPACK_APP_ID;
+        const PAYSPACK_APP_SECRET = process.env.PAYSPACK_APP_SECRET;
+        const authResponse = await axios.post('https://payments.paypack.rw/api/auth/agents/authorize', {
+            client_id: PAYSPACK_APP_ID,
+            client_secret: PAYSPACK_APP_SECRET,
+        });
+        const accessToken = authResponse.data?.access_token;
+        if (!accessToken) {
+            throw new AppError('Failed to obtain Paypack access token', 500);
+        }
 
-        // Update payment status if changed
-        if (momoStatus.status !== payment.status) {
+        const ref = payment.providerReference;
+        const statusResponse = await axios.get(`https://payments.paypack.rw/api/transactions/find/${ref}`, {
+            headers: {
+                'Authorization': `Bearer ${accessToken}`,
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+            }
+        });
+        const paypackStatus = statusResponse.data.status;
+        let newStatus = payment.status;
+        if (paypackStatus && paypackStatus.toUpperCase() !== payment.status) {
+            if (paypackStatus.toUpperCase() === 'SUCCESS') newStatus = 'SUCCESS';
+            else if (paypackStatus.toUpperCase() === 'FAILED') newStatus = 'FAILED';
+            else if (paypackStatus.toUpperCase() === 'PENDING') newStatus = 'PENDING';
             await prisma.payment.update({
                 where: { id: payment.id },
-                data: { status: momoStatus.status }
+                data: { status: newStatus }
             });
         }
 
@@ -88,96 +140,27 @@ exports.getPaymentStatus = async (req, res) => {
             payment: {
                 id: payment.id,
                 amount: payment.amount,
-                status: momoStatus.status,
-                message: momoStatus.message,
+                status: newStatus,
                 referenceId: payment.referenceId
             }
         });
     } catch (error) {
         console.error('Failed to get payment status:', error);
-        res.status(500).json({
-            message: 'Failed to get payment status',
-            error: error.message
-        });
+        return next(new AppError('Failed to get payment status', 500));
     }
 };
 
-exports.getUserPayments = async (req, res) => {
+exports.getUserPayments = async (req, res, next) => {
     try {
         const userId = req.user.id;
-
         const payments = await prisma.payment.findMany({
             where: { userId },
             orderBy: { createdAt: 'desc' }
         });
-
         res.status(200).json({ payments });
     } catch (error) {
         console.error('Failed to get user payments:', error);
-        res.status(500).json({
-            message: 'Failed to get payment history',
-            error: error.message
-        });
-    }
-};
-
-// Webhook handler for MoMo payment callbacks
-exports.handlePaymentWebhook = async (req, res) => {
-    try {
-        const { referenceId, status, message, amount, currency, payer } = req.body;
-        
-        console.log('Received payment webhook:', {
-            referenceId,
-            status,
-            message,
-            amount,
-            currency,
-            payer: payer ? '***exists***' : '***missing***'
-        });
-
-        if (!referenceId) {
-            console.error('Webhook missing referenceId');
-            return res.status(400).json({ error: 'Missing referenceId' });
-        }
-
-        // Find the payment by reference ID
-        const payment = await prisma.payment.findFirst({
-            where: { referenceId }
-        });
-
-        if (!payment) {
-            console.error('Payment not found for referenceId:', referenceId);
-            return res.status(404).json({ error: 'Payment not found' });
-        }
-
-        // Update payment status
-        const updatedPayment = await prisma.payment.update({
-            where: { id: payment.id },
-            data: { 
-                status: status.toUpperCase(),
-                updatedAt: new Date()
-            }
-        });
-
-        console.log('Payment status updated:', {
-            paymentId: payment.id,
-            oldStatus: payment.status,
-            newStatus: status,
-            referenceId
-        });
-
-        // Send success response to MoMo
-        res.status(200).json({ 
-            status: 'success',
-            message: 'Payment status updated successfully'
-        });
-
-    } catch (error) {
-        console.error('Payment webhook error:', error);
-        res.status(500).json({
-            error: 'Failed to process payment webhook',
-            message: error.message
-        });
+        return next(new AppError('Failed to get payment history', 500));
     }
 };
 
@@ -217,5 +200,60 @@ exports.testPayment = async (req, res) => {
             error: 'Failed to create test payment',
             message: error.message
         });
+    }
+};
+
+exports.initiatePayspackPayment = async (req, res) => {
+  try {
+    const { amount, phone } = req.body;
+    // 1. Obtain access token
+    const PAYSPACK_APP_ID = process.env.PAYSPACK_APP_ID;
+    const PAYSPACK_APP_SECRET = process.env.PAYSPACK_APP_SECRET;
+    const authResponse = await axios.post('https://payments.paypack.rw/api/auth/agents/authorize', {
+      client_id: PAYSPACK_APP_ID,
+      client_secret: PAYSPACK_APP_SECRET,
+    });
+    const accessToken = authResponse.data?.access_token;
+    if (!accessToken) {
+      return res.status(500).json({ error: 'Failed to obtain Paypack access token' });
+    }
+    // 2. Initiate cashin (deposit)
+    const response = await axios.post(
+      'https://payments.paypack.rw/api/transactions/cashin',
+      {
+        amount,
+        number: phone,
+      },
+      {
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+      }
+    );
+    res.json(response.data);
+  } catch (error) {
+    res.status(500).json({ error: error.response?.data || error.message });
+  }
+};
+
+// Get all payments for a company (COMPANY role only)
+exports.getCompanyPayments = async (req, res, next) => {
+    try {
+        if (req.user.role !== 'COMPANY') {
+            return res.status(403).json({
+                message: 'Access denied. Only companies can view their payment history.'
+            });
+        }
+        const companyId = req.user.id;
+        const payments = await prisma.payment.findMany({
+            where: { userId: companyId },
+            orderBy: { createdAt: 'desc' }
+        });
+        res.status(200).json({ payments });
+    } catch (error) {
+        console.error('Failed to get company payments:', error);
+        return next(new AppError('Failed to get company payment history', 500));
     }
 }; 

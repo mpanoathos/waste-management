@@ -9,7 +9,7 @@ router.post('/login', userController.loginUser);
 
 // Protected routes
 router.get('/profile', authenticateToken, userController.getUserProfile);
-router.put('/profile', authenticateToken, userController.updateUserProfile);
+router.put('/profile', userController.updateUserProfile);
 router.get('/users', authenticateToken, userController.getAllUsers);
 router.get('/all', authenticateToken, userController.getAllUsers);
 router.get('/bin-management', authenticateToken, userController.getUsersForBinManagement);

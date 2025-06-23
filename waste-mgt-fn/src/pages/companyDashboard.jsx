@@ -16,6 +16,9 @@ import {
   ArcElement,
 } from 'chart.js';
 import { Line, Bar, Pie } from 'react-chartjs-2';
+import { fetchCompanyPayments } from '../utils/api';
+import { PDFDownloadLink, Document, Page, Text, View, StyleSheet } from '@react-pdf/renderer';
+import { toast } from 'react-toastify';
 
 // Register ChartJS components
 ChartJS.register(
@@ -28,6 +31,45 @@ ChartJS.register(
   Tooltip,
   Legend,
   ArcElement
+);
+
+// PDF Styles (reuse from payment.jsx)
+const styles = StyleSheet.create({
+  page: { padding: 30 },
+  title: { fontSize: 24, marginBottom: 20, textAlign: 'center' },
+  table: { display: 'table', width: 'auto', borderStyle: 'solid', borderWidth: 1, borderColor: '#bfbfbf' },
+  tableRow: { flexDirection: 'row' },
+  tableHeader: { backgroundColor: '#f0f0f0' },
+  tableCell: { padding: 5, borderWidth: 1, borderColor: '#bfbfbf' },
+  headerCell: { fontWeight: 'bold' },
+});
+
+const PaymentHistoryPDF = ({ payments }) => (
+  <Document>
+    <Page size="A4" style={styles.page}>
+      <Text style={styles.title}>Company Payment History Report</Text>
+      <View style={styles.table}>
+        <View style={[styles.tableRow, styles.tableHeader]}>
+          <Text style={[styles.tableCell, styles.headerCell, { width: '30%' }]}>Date</Text>
+          <Text style={[styles.tableCell, styles.headerCell, { width: '30%' }]}>Amount</Text>
+          <Text style={[styles.tableCell, styles.headerCell, { width: '40%' }]}>Status</Text>
+        </View>
+        {payments.map((payment) => (
+          <View key={payment.id} style={styles.tableRow}>
+            <Text style={[styles.tableCell, { width: '30%' }]}>
+              {new Date(payment.createdAt).toLocaleDateString()}
+            </Text>
+            <Text style={[styles.tableCell, { width: '30%' }]}>
+              RWF {payment.amount.toFixed(2)}
+            </Text>
+            <Text style={[styles.tableCell, { width: '40%' }]}>
+              {payment.status}
+            </Text>
+          </View>
+        ))}
+      </View>
+    </Page>
+  </Document>
 );
 
 const CompanyDashboard = () => {
@@ -46,6 +88,8 @@ const CompanyDashboard = () => {
     totalBins: 0,
     collectionRate: 0,
   });
+  const [companyPayments, setCompanyPayments] = useState([]);
+  const [loadingPayments, setLoadingPayments] = useState(false);
   const navigate = useNavigate();
 
   // Fetch company profile
@@ -95,7 +139,20 @@ const CompanyDashboard = () => {
 
     fetchProfile();
     fetchAnalyticsData();
+    fetchPayments();
   }, [navigate]);
+
+  const fetchPayments = async () => {
+    setLoadingPayments(true);
+    try {
+      const payments = await fetchCompanyPayments();
+      setCompanyPayments(payments);
+    } catch (error) {
+      toast.error('Failed to fetch company payments');
+    } finally {
+      setLoadingPayments(false);
+    }
+  };
 
   // Chart configurations
   const dailyCollectionsData = {
@@ -316,6 +373,53 @@ const CompanyDashboard = () => {
               </div>
             </div>
           </div>
+        </div>
+
+        {/* Payment History Section */}
+        <div className="bg-white rounded-lg shadow-sm p-6 mb-8">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-xl font-bold text-gray-800">Payment History</h2>
+            {companyPayments.length > 0 && (
+              <PDFDownloadLink
+                document={<PaymentHistoryPDF payments={companyPayments} />}
+                fileName="company-payment-history.pdf"
+                className="flex items-center px-4 py-2 bg-gray-800 text-white rounded-lg hover:bg-gray-700"
+              >
+                {({ loading }) => (
+                  <>
+                    <FaDownload className="mr-2" />
+                    {loading ? 'Generating...' : 'Download PDF'}
+                  </>
+                )}
+              </PDFDownloadLink>
+            )}
+          </div>
+          {loadingPayments ? (
+            <p className="text-gray-500">Loading payments...</p>
+          ) : companyPayments.length === 0 ? (
+            <p className="text-gray-500">No payment history available</p>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="min-w-full">
+                <thead>
+                  <tr className="bg-gray-50">
+                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Amount</th>
+                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {companyPayments.map((payment) => (
+                    <tr key={payment.id}>
+                      <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-500">{new Date(payment.createdAt).toLocaleDateString()}</td>
+                      <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-900">RWF {payment.amount.toFixed(2)}</td>
+                      <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-700">{payment.status}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
 
         {/* Quick Actions Section */}

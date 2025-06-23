@@ -33,7 +33,6 @@ exports.registerUser = async (req, res) => {
             location: 'Kigali',
             status: 'EMPTY',
             fillLevel: 0,
-            type: 'ORGANIC',
             userId: user.id
           },
         });
@@ -642,6 +641,9 @@ exports.getCompanyCollectionHistory = async (req, res) => {
 };
 
 exports.updateUserProfile = async (req, res) => {
+  if (!req.user || !req.user.id) {
+    return res.status(401).json({ message: 'Unauthorized: user not found in request' });
+  }
   try {
     const userId = req.user.id;
     const {
