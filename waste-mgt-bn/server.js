@@ -20,6 +20,7 @@ const adminRoutes = require('./routes/adminRoutes');
 const chatRoutes = require('./routes/chatRoutes');
 const reportThreadRoutes = require('./routes/reportThreadRoutes');
 const webhookRoutes = require('./routes/webhookRoutes');
+const collectionRoutes = require('./routes/collectionRoutes');
 
 // Log environment variables (development only)
 if (process.env.NODE_ENV === 'development') {
@@ -50,17 +51,30 @@ app.get('/health', (req, res) => {
   });
 });
 
+// Test endpoint for debugging
+app.get('/test', (req, res) => {
+  res.status(200).json({ 
+    message: 'Test endpoint working',
+    timestamp: new Date().toISOString(),
+    headers: req.headers
+  });
+});
+
 // Routes
 app.use('/user', userRoutes);
 app.use('/bin', binRoute);
 app.use('/sensor', sensorRoute);
 app.use('/api/payments', paymentRoutes);
+app.use('/payment', paymentRoutes);
 app.use('/admin', adminRoutes);
 app.use('/chat', chatRoutes);
 app.use('/analytics', analyticsRoutes);
+app.use('/api/analytics', analyticsRoutes);
 app.use('/report-thread', reportThreadRoutes);
 app.use('/webhook', webhookRoutes);
 app.use('/api/routes', routeRoutes);
+app.use('/collection', collectionRoutes);
+
 // Sample route
 app.get('/', (req, res) => {
   res.send('Smart Bin Backend API 🚮✅');

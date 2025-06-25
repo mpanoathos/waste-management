@@ -90,6 +90,12 @@ const CompanyDashboard = () => {
   });
   const [companyPayments, setCompanyPayments] = useState([]);
   const [loadingPayments, setLoadingPayments] = useState(false);
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [paymentForm, setPaymentForm] = useState({ amount: '', phoneNumber: '', description: '' });
+  const [paymentLoading, setPaymentLoading] = useState(false);
+  const [filterStatus, setFilterStatus] = useState('ALL');
+  const [searchTerm, setSearchTerm] = useState('');
+  const [selectedPayment, setSelectedPayment] = useState(null);
   const navigate = useNavigate();
 
   // Fetch company profile
@@ -154,6 +160,18 @@ const CompanyDashboard = () => {
     }
   };
 
+  // Helper to get bin status count safely
+  const getBinStatusCount = (status) => {
+    if (Array.isArray(analyticsData.binStatus)) {
+      // If backend returns an array of { status, _count: { status: N } }
+      return analyticsData.binStatus.find(b => b.status === status)?._count?.status || 0;
+    } else if (analyticsData.binStatus && typeof analyticsData.binStatus === 'object') {
+      // If backend returns an object with keys
+      return analyticsData.binStatus[status?.toLowerCase()] || 0;
+    }
+    return 0;
+  };
+
   // Chart configurations
   const dailyCollectionsData = {
     labels: analyticsData.dailyCollections.map(item => item.date),
@@ -172,9 +190,9 @@ const CompanyDashboard = () => {
     datasets: [
       {
         data: [
-          analyticsData.binStatus.empty || 0,
-          analyticsData.binStatus.partial || 0,
-          analyticsData.binStatus.full || 0,
+          getBinStatusCount('EMPTY'),
+          getBinStatusCount('PARTIAL'),
+          getBinStatusCount('FULL'),
         ],
         backgroundColor: [
           'rgb(34, 197, 94)',
@@ -195,6 +213,44 @@ const CompanyDashboard = () => {
       },
     ],
   };
+
+  const handlePaymentInputChange = (e) => {
+    setPaymentForm({ ...paymentForm, [e.target.name]: e.target.value });
+  };
+
+  const handlePaymentSubmit = async (e) => {
+    e.preventDefault();
+    setPaymentLoading(true);
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch('http://localhost:5000/api/payments/initiate', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(paymentForm),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.message || 'Failed to initiate payment');
+      toast.success('Payment initiated successfully');
+      setShowPaymentModal(false);
+      setPaymentForm({ amount: '', phoneNumber: '', description: '' });
+      fetchPayments();
+    } catch (error) {
+      toast.error(error.message || 'Failed to initiate payment');
+    } finally {
+      setPaymentLoading(false);
+    }
+  };
+
+  const filteredPayments = companyPayments.filter(payment => {
+    const matchesStatus = filterStatus === 'ALL' || payment.status === filterStatus;
+    const matchesSearch = searchTerm === '' ||
+      (payment.referenceId && payment.referenceId.toLowerCase().includes(searchTerm.toLowerCase())) ||
+      (payment.phoneNumber && payment.phoneNumber.toLowerCase().includes(searchTerm.toLowerCase()));
+    return matchesStatus && matchesSearch;
+  });
 
   return (
     <div className="flex h-screen">
@@ -373,53 +429,6 @@ const CompanyDashboard = () => {
               </div>
             </div>
           </div>
-        </div>
-
-        {/* Payment History Section */}
-        <div className="bg-white rounded-lg shadow-sm p-6 mb-8">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-xl font-bold text-gray-800">Payment History</h2>
-            {companyPayments.length > 0 && (
-              <PDFDownloadLink
-                document={<PaymentHistoryPDF payments={companyPayments} />}
-                fileName="company-payment-history.pdf"
-                className="flex items-center px-4 py-2 bg-gray-800 text-white rounded-lg hover:bg-gray-700"
-              >
-                {({ loading }) => (
-                  <>
-                    <FaDownload className="mr-2" />
-                    {loading ? 'Generating...' : 'Download PDF'}
-                  </>
-                )}
-              </PDFDownloadLink>
-            )}
-          </div>
-          {loadingPayments ? (
-            <p className="text-gray-500">Loading payments...</p>
-          ) : companyPayments.length === 0 ? (
-            <p className="text-gray-500">No payment history available</p>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="min-w-full">
-                <thead>
-                  <tr className="bg-gray-50">
-                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
-                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Amount</th>
-                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {companyPayments.map((payment) => (
-                    <tr key={payment.id}>
-                      <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-500">{new Date(payment.createdAt).toLocaleDateString()}</td>
-                      <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-900">RWF {payment.amount.toFixed(2)}</td>
-                      <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-700">{payment.status}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
         </div>
 
         {/* Quick Actions Section */}

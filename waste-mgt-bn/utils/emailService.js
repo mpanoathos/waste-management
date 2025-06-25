@@ -39,7 +39,7 @@ const sendEmail = async (to, subject, templateName, templateData) => {
     }
 
     // Configure the email transporter with better Gmail settings
-    const transporter = nodemailer.createTransporter({
+    const transporter = nodemailer.createTransport({
       service: 'Gmail',
       host: 'smtp.gmail.com',
       port: 587,
@@ -108,7 +108,7 @@ const testEmailConfig = async () => {
     console.log('EMAIL_USER:', process.env.EMAIL_USER ? 'Set' : 'Not set');
     console.log('EMAIL_PASS:', process.env.EMAIL_PASS ? 'Set (length: ' + process.env.EMAIL_PASS.length + ')' : 'Not set');
     
-    const transporter = nodemailer.createTransporter({
+    const transporter = nodemailer.createTransport({
       service: 'Gmail',
       host: 'smtp.gmail.com',
       port: 587,

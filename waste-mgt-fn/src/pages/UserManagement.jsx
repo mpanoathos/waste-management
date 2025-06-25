@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import AdminSideNav from './SideNav/adminSideNav';
+import { toast } from 'react-toastify';
 
 const UserManagement = () => {
   const [users, setUsers] = useState([]);
@@ -10,6 +11,8 @@ const UserManagement = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [selectedRole, setSelectedRole] = useState('ALL');
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [userToDelete, setUserToDelete] = useState(null);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -78,11 +81,33 @@ const UserManagement = () => {
     }
   };
 
+  const handleDeleteUser = async () => {
+    if (!userToDelete) return;
+    try {
+      const token = localStorage.getItem('token');
+      await axios.delete(`http://localhost:5000/user/delete/${userToDelete}`, {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      });
+      toast.success('User deleted successfully');
+      setShowDeleteModal(false);
+      setUserToDelete(null);
+      fetchUsers(); // Refresh the list
+    } catch (error) {
+      console.error('Error deleting user:', error);
+      toast.error('Failed to delete user');
+      setError('Failed to delete user');
+      setShowDeleteModal(false);
+      setUserToDelete(null);
+    }
+  };
+
   const getFilteredUsers = () => {
     if (selectedRole === 'ALL') {
-      return users;
+      return users.filter(user => user.role !== 'ADMIN');
     }
-    return users.filter(user => user.role === selectedRole);
+    return users.filter(user => user.role === selectedRole && user.role !== 'ADMIN');
   };
 
   const getRoleColor = (role) => {
@@ -285,6 +310,12 @@ const UserManagement = () => {
                             </button>
                           </div>
                         )}
+                        <button
+                          onClick={() => { setShowDeleteModal(true); setUserToDelete(user.id); }}
+                          className="ml-2 text-white bg-red-600 hover:bg-red-700 text-xs px-3 py-1 rounded"
+                        >
+                          Delete
+                        </button>
                       </td>
                     </tr>
                   ))}
@@ -294,6 +325,29 @@ const UserManagement = () => {
           </div>
         </div>
       </div>
+      {/* Delete Confirmation Modal */}
+      {showDeleteModal && (
+        <div className="fixed inset-0 flex items-center justify-center z-50 bg-black bg-opacity-40">
+          <div className="bg-white rounded-lg shadow-lg p-6 w-full max-w-sm">
+            <h2 className="text-lg font-semibold mb-4 text-gray-900">Confirm Deletion</h2>
+            <p className="mb-6 text-gray-700">Are you sure you want to delete this user? This action cannot be undone.</p>
+            <div className="flex justify-end space-x-2">
+              <button
+                onClick={() => { setShowDeleteModal(false); setUserToDelete(null); }}
+                className="px-4 py-2 bg-gray-200 text-gray-800 rounded hover:bg-gray-300"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleDeleteUser}
+                className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

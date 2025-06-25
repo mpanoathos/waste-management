@@ -9,6 +9,7 @@ import Profile from './pages/profile';
 import CollectionHistory from './pages/CollectionHistory';
 import CompanyCollectionHistory from './pages/CompanyCollectionHistory';
 import Payment from './pages/payment';
+import CompanyPayments from './pages/CompanyPayments';
 import AdminDashboard from './pages/adminDashboard';
 import BinManagement from './pages/companyBinManagement';
 import ResetPassword from './pages/ResetPassword';
@@ -38,6 +39,7 @@ function App() {
           <Route path="/collection-history" element={<CollectionHistory />} />
           <Route path="/company-collection-history" element={<CompanyCollectionHistory />} />
           <Route path="/payments" element={<Payment />} />
+          <Route path="/company-payments" element={<CompanyPayments />} />
           <Route path="/company-dashboard" element={<CompanyDashboard />} />
           <Route path="/admin-dashboard" element={<AdminDashboard />} />
           <Route path="/bin-management" element={<BinManagement />} />

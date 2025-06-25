@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { fetchUnassignedRoutes, assignRouteToCompany, fetchAllRoutes, fetchAllCompanies } from '../utils/api';
 import AdminSideNav from '../pages/SideNav/adminSideNav';
+import axios from 'axios';
+import { toast } from 'react-toastify';
 
 const RouteManagement = ({ token }) => {
   const [routes, setRoutes] = useState([]);
@@ -16,6 +18,8 @@ const RouteManagement = ({ token }) => {
   const [newRouteName, setNewRouteName] = useState('');
   const [newRouteCoordinates, setNewRouteCoordinates] = useState('');
   const [creatingRoute, setCreatingRoute] = useState(false);
+  const [address, setAddress] = useState('');
+  const [geocoding, setGeocoding] = useState(false);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -95,6 +99,7 @@ const RouteManagement = ({ token }) => {
 
       const newRoute = await response.json();
       setMessage('Route created successfully!');
+      toast.success('Route created successfully!');
       
       // Reset form
       setNewRouteName('');
@@ -112,6 +117,7 @@ const RouteManagement = ({ token }) => {
       
     } catch (error) {
       setMessage('Error creating route: ' + error.message);
+      toast.error('Error creating route: ' + error.message);
     } finally {
       setCreatingRoute(false);
     }
@@ -122,6 +128,7 @@ const RouteManagement = ({ token }) => {
     try {
       await assignRouteToCompany(selectedRoute, selectedCompany, token);
       setMessage('Route assigned successfully!');
+      toast.success('Route assigned successfully!');
       
       // Refresh lists
       const [unassignedRes, allRoutesRes] = await Promise.all([
@@ -137,6 +144,39 @@ const RouteManagement = ({ token }) => {
       setSelectedCompany('');
     } catch (err) {
       setMessage('Error assigning route: ' + (err.response?.data?.message || err.message));
+      toast.error('Error assigning route: ' + (err.response?.data?.message || err.message));
+    }
+  };
+
+  const handleGeocodeAddress = async (e) => {
+    e.preventDefault();
+    if (!address.trim()) {
+      setMessage('Please enter an address to geocode.');
+      return;
+    }
+    setGeocoding(true);
+    setMessage('');
+    try {
+      // Use OpenStreetMap Nominatim API
+      const response = await axios.get('https://nominatim.openstreetmap.org/search', {
+        params: {
+          q: address,
+          format: 'json',
+          limit: 3
+        }
+      });
+      if (response.data && response.data.length > 0) {
+        // Use all returned results as route points
+        const coords = response.data.map(loc => `${loc.lat},${loc.lon}`).join(';');
+        setNewRouteCoordinates(coords);
+        setMessage('Coordinates filled from address! You can edit them if needed.');
+      } else {
+        setMessage('No results found for that address.');
+      }
+    } catch (err) {
+      setMessage('Error geocoding address.');
+    } finally {
+      setGeocoding(false);
     }
   };
 
@@ -173,6 +213,27 @@ const RouteManagement = ({ token }) => {
                   className="w-full p-2 border border-gray-300 rounded-md"
                   placeholder="e.g., Kicukiro Kabeza"
                 />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1 text-gray-700">Address (optional):</label>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={address}
+                    onChange={e => setAddress(e.target.value)}
+                    className="flex-1 p-2 border border-gray-300 rounded-md"
+                    placeholder="e.g., KK 123 St, Kigali"
+                  />
+                  <button
+                    type="button"
+                    onClick={handleGeocodeAddress}
+                    disabled={geocoding || !address.trim()}
+                    className="bg-blue-600 text-white px-3 py-2 rounded-md hover:bg-blue-700 disabled:opacity-50 transition"
+                  >
+                    {geocoding ? 'Geocoding...' : 'Geocode Address'}
+                  </button>
+                </div>
+                <p className="text-xs text-gray-500 mt-1">Enter an address and click 'Geocode Address' to fill coordinates automatically.</p>
               </div>
               <div>
                 <label className="block text-sm font-medium mb-1 text-gray-700">
@@ -242,12 +303,6 @@ const RouteManagement = ({ token }) => {
             </button>
           </form>
         </section>
-
-        {message && (
-          <div className={`p-4 mb-6 rounded-md ${message.includes('Error') ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`}>
-            {message}
-          </div>
-        )}
 
         {/* All Routes Display */}
         <section>

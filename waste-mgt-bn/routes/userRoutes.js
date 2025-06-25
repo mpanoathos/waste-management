@@ -9,7 +9,7 @@ router.post('/login', userController.loginUser);
 
 // Protected routes
 router.get('/profile', authenticateToken, userController.getUserProfile);
-router.put('/profile', userController.updateUserProfile);
+router.put('/profile',authenticateToken, userController.updateUserProfile);
 router.get('/users', authenticateToken, userController.getAllUsers);
 router.get('/all', authenticateToken, userController.getAllUsers);
 router.get('/bin-management', authenticateToken, userController.getUsersForBinManagement);
@@ -28,6 +28,7 @@ router.post('/collect-user-bin/:userId', authenticateToken, userController.colle
 router.get('/pending-companies', authenticateToken, isAdmin, userController.getPendingCompanies);
 router.post('/approve-company', authenticateToken, isAdmin, userController.approveCompany);
 router.get('/companies', authenticateToken, isAdmin, userController.getAllCompanies);
+router.delete('/delete/:userId', authenticateToken, isAdmin, userController.deleteUser);
 
 // Test email configuration route
 router.get('/test-email', async (req, res) => {

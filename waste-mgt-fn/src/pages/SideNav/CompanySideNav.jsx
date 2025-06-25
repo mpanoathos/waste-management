@@ -1,4 +1,4 @@
-import { FaMap, FaTrash, FaRoute, FaChartBar, FaSignOutAlt, FaBuilding, FaHistory } from 'react-icons/fa';
+import { FaMap, FaTrash, FaRoute, FaChartBar, FaSignOutAlt, FaBuilding, FaHistory, FaMoneyBill } from 'react-icons/fa';
 import { Link, useLocation } from 'react-router-dom';
 
 const CompanySideNav = () => {
@@ -14,6 +14,7 @@ const CompanySideNav = () => {
     { path: '/bin-management', icon: <FaTrash />, label: 'Bin Management' },
     { path: '/my-routes', icon: <FaRoute />, label: 'My Routes' },
     { path: '/company-analytics', icon: <FaChartBar />, label: 'Analytics' },
+    { path: '/company-payments', icon: <FaMoneyBill />, label: 'Payments' },
     { path: '/company-collection-history', icon: <FaHistory />, label: 'Collection History' },
   ];
 

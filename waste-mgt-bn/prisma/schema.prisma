@@ -8,142 +8,165 @@ datasource db {
 }
 
 model User {
-  id        Int      @id @default(autoincrement())
-  name      String
-  email     String   @unique
-  password  String
-  role      Role     @default(USER)
-  address  String?
-  phoneNumber String?
-  latitude Float?
-  longitude Float?
-  companyName String? @default("")
-  companyType String?
-  approvalStatus ApprovalStatus @default(PENDING)
-  rejectionReason String?
-  bins      Bin[]    // user can own multiple bins
-  payments  Payment[]
-  collections CollectionHistory[]
-  resetToken String?
-  resetTokenExpiry DateTime?
-  createdAt DateTime @default(now())
-  chatMessages ChatMessage[]
+  id                 Int                 @id @default(autoincrement())
+  name               String
+  email              String              @unique
+  password           String
+  role               Role                @default(USER)
+  address            String?
+  phoneNumber        String?
+  latitude           Float?
+  longitude          Float?
+  companyName        String?             @default("")
+  companyType        String?
+  approvalStatus     ApprovalStatus      @default(PENDING)
+  rejectionReason    String?
+  bins               Bin[] // user can own multiple bins
+  payments           Payment[]           @relation("UserPayments")
+  companyPayments    Payment[]           @relation("CompanyPayments")
+  collections        CollectionHistory[]
+  resetToken         String?
+  resetTokenExpiry   DateTime?
+  createdAt          DateTime            @default(now())
+  chatMessages       ChatMessage[]
   collectionRequests CollectionRequest[]
-  reports   ReportThread[]
-  routes    Route[]   // Add this line to link routes to companies
+  reports            ReportThread[]
+  routes             Route[] // Add this line to link routes to companies
+  alerts Alert[] @relation("CompanyAlerts")
 }
 
 model Bin {
-  id         Int         @id @default(autoincrement())
-  location   String
-  latitude   Float?
-  longitude  Float?
-  fillLevel  Int         @default(0) // percentage (0 - 100)
-  status     BinStatus   @default(EMPTY)
-  user       User        @relation(fields: [userId], references: [id])
-  userId     Int
-  sensorLogs SensorLog[]
-  collectionHistory CollectionHistory[]
-  createdAt  DateTime    @default(now())
-  updatedAt  DateTime    @updatedAt
+  id                 Int                 @id @default(autoincrement())
+  location           String
+  latitude           Float?
+  longitude          Float?
+  fillLevel          Int                 @default(0) // percentage (0 - 100)
+  status             BinStatus           @default(EMPTY)
+  user               User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId             Int
+  sensorLogs         SensorLog[]
+  collectionHistory  CollectionHistory[]
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
   collectionRequests CollectionRequest[]
   // AI-generated content tracking
-  aiGenerated Boolean    @default(false)
-  metadata    Json?      // Store additional AI metadata
+  aiGenerated        Boolean             @default(false)
+  metadata           Json? // Store additional AI metadata
+  alert Alert[]
 }
 
 model SensorLog {
   id         Int      @id @default(autoincrement())
-  bin        Bin      @relation(fields: [binId], references: [id])
+  bin        Bin      @relation(fields: [binId], references: [id], onDelete: Cascade)
   binId      Int
   fillLevel  Int
   recordedAt DateTime @default(now())
 }
 
 model Payment {
-  id          Int      @id @default(autoincrement())
-  userId      Int
-  amount      Float
-  status      String   // PENDING, SUCCESS, FAILED
-  referenceId String   @unique
-  phoneNumber String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  user        User     @relation(fields: [userId], references: [id])
+  id                Int           @id @default(autoincrement())
+  userId            Int
+  companyId         Int?
+  amount            Float
+  status            String   // PENDING, SUCCESS, FAILED
+  referenceId       String        @unique
+  phoneNumber       String?
+  providerReference String?
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+  user              User          @relation("UserPayments", fields: [userId], references: [id], onDelete: Cascade)
+  company           User?         @relation("CompanyPayments", fields: [companyId], references: [id], onDelete: Cascade)
 
   @@map("payments")
 }
 
 model CollectionHistory {
-  id        Int      @id @default(autoincrement())
-  bin       Bin      @relation(fields: [binId], references: [id])
-  binId     Int
-  collectedBy User   @relation(fields: [collectedById], references: [id])
-  collectedById Int
-  collectedAt DateTime @default(now())
-  notes     String?
+  id                  Int                @id @default(autoincrement())
+  bin                 Bin                @relation(fields: [binId], references: [id], onDelete: Cascade)
+  binId               Int
+  collectedBy         User               @relation(fields: [collectedById], references: [id], onDelete: Cascade)
+  collectedById       Int
+  collectedAt         DateTime           @default(now())
+  notes               String?
+  collectionRequest   CollectionRequest? @relation(fields: [collectionRequestId], references: [id])
+  collectionRequestId Int?
 }
 
 model ChatMessage {
-    id        Int      @id @default(autoincrement())
-    content   String
-    sender    String   // 'USER' or 'AI'
-    createdAt DateTime @default(now())
-    userId    Int
-    user      User     @relation(fields: [userId], references: [id])
-    // AI-generated content tracking
-    aiGenerated Boolean @default(false)
-    metadata   Json?    // Store additional AI metadata
+  id          Int      @id @default(autoincrement())
+  content     String
+  sender      String // 'USER' or 'AI'
+  createdAt   DateTime @default(now())
+  userId      Int
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  // AI-generated content tracking
+  aiGenerated Boolean  @default(false)
+  metadata    Json? // Store additional AI metadata
 }
 
 model CollectionRequest {
-  id        Int      @id @default(autoincrement())
-  bin       Bin     @relation(fields: [binId], references: [id])
-  binId     Int
-  user      User    @relation(fields: [userId], references: [id])
-  userId    Int
-  status    RequestStatus @default(PENDING)
-  createdAt DateTime @default(now())
+  id                  Int                 @id @default(autoincrement())
+  bin                 Bin                 @relation(fields: [binId], references: [id], onDelete: Cascade)
+  binId               Int
+  user                User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId              Int
+  status              RequestStatus       @default(PENDING)
+  createdAt           DateTime            @default(now())
   // AI-generated content tracking
-  aiGenerated Boolean @default(false)
-  metadata   Json?    // Store additional AI metadata
-  reason     String?  // Reason for collection request
-  priority   String   @default("NORMAL") // LOW, NORMAL, HIGH, URGENT
+  aiGenerated         Boolean             @default(false)
+  metadata            Json? // Store additional AI metadata
+  reason              String? // Reason for collection request
+  priority            String              @default("NORMAL") // LOW, NORMAL, HIGH, URGENT
+  collectionHistories CollectionHistory[]
 }
 
 model ReportThread {
-  id        Int             @id @default(autoincrement())
-  user      User            @relation(fields: [userId], references: [id])
-  userId    Int
-  subject   String
-  status    ThreadStatus    @default(OPEN)
-  createdAt DateTime        @default(now())
-  messages  ReportMessage[]
+  id          Int             @id @default(autoincrement())
+  user        User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId      Int
+  subject     String
+  status      ThreadStatus    @default(OPEN)
+  createdAt   DateTime        @default(now())
+  messages    ReportMessage[]
   // AI-generated content tracking
-  aiGenerated Boolean       @default(false)
-  metadata   Json?          // Store additional AI metadata
+  aiGenerated Boolean         @default(false)
+  metadata    Json? // Store additional AI metadata
 }
 
 model ReportMessage {
-  id        Int          @id @default(autoincrement())
-  thread    ReportThread @relation(fields: [threadId], references: [id])
-  threadId  Int
-  senderId  Int          // user or admin
-  senderRole String      // 'USER' or 'ADMIN'
-  content   String
-  createdAt DateTime     @default(now())
+  id          Int          @id @default(autoincrement())
+  thread      ReportThread @relation(fields: [threadId], references: [id])
+  threadId    Int
+  senderId    Int // user or admin
+  senderRole  String // 'USER' or 'ADMIN'
+  content     String
+  createdAt   DateTime     @default(now())
   // AI-generated content tracking
-  aiGenerated Boolean    @default(false)
-  metadata   Json?       // Store additional AI metadata
+  aiGenerated Boolean      @default(false)
+  metadata    Json? // Store additional AI metadata
 }
 
 model Route {
   id          Int      @id @default(autoincrement())
   name        String
-  coordinates Json     // Array of { lat, lng } objects
-  company     User?    @relation(fields: [companyId], references: [id])
+  coordinates Json // Array of { lat, lng } objects
+  company     User?    @relation(fields: [companyId], references: [id], onDelete: Cascade)
   companyId   Int?
   createdAt   DateTime @default(now())
+}
+
+model Alert {
+  id        Int      @id @default(autoincrement())
+  binId     Int?
+  bin       Bin?     @relation(fields: [binId], references: [id])
+  companyId Int
+  company   User     @relation("CompanyAlerts", fields: [companyId], references: [id])
+  type      String
+  message   String
+  priority  String
+  status    String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 enum Role {
@@ -184,4 +207,4 @@ enum RequestStatus {
 enum ThreadStatus {
   OPEN
   CLOSED
-} 
+}

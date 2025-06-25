@@ -8,4 +8,7 @@ router.get('/company-analytics', authenticateToken, analyticsController.getCompa
 // System analytics report for admin dashboard
 router.get('/report', analyticsController.getSystemReport);
 
+// Dashboard analytics endpoint for frontend
+router.get('/', authenticateToken, analyticsController.getDashboardAnalytics);
+
 module.exports = router; 

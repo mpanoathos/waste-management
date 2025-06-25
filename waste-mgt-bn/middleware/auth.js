@@ -10,7 +10,8 @@ const authenticateToken = async (req, res, next) => {
         const token = authHeader && authHeader.split(' ')[1]; // Bearer TOKEN
 
         if (!token) {
-            return res.status(401).json({ message: 'No token provided' });
+            console.warn('Auth Middleware: No token provided');
+            return res.status(403).json({ message: 'No token provided' });
         }
 
         const decoded = jwt.verify(token, process.env.JWT_SECRET);
@@ -24,7 +25,8 @@ const authenticateToken = async (req, res, next) => {
         req.user = user;
         next();
     } catch (error) {
-        return res.status(403).json({ message: 'Invalid token' });
+        console.warn('Auth Middleware: Invalid or expired token', error.message);
+        return res.status(403).json({ message: 'Invalid or expired token' });
     }
 };
 

@@ -215,16 +215,20 @@ const BinStatus = () => {
                 </div>
               </div>
 
-              {bin.status === 'FULL' && !hasPendingRequest && (
-                <button
-                  className="mt-6 px-6 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
-                  onClick={handleAlertCompany}
-                >
-                  Alert Company
-                </button>
-              )}
-              {bin.status === 'FULL' && hasPendingRequest && (
-                <div className="mt-6 text-blue-700 font-semibold">A collection request is already pending for this bin.</div>
+              {bin.status === 'FULL' && (
+                <div className="mt-6">
+                  <button
+                    className="px-6 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
+                    onClick={handleAlertCompany}
+                  >
+                    Alert Company
+                  </button>
+                  {hasPendingRequest && (
+                    <div className="mt-2 text-blue-700 text-sm">
+                      A collection request is already pending for this bin.
+                    </div>
+                  )}
+                </div>
               )}
             </div>
           )}

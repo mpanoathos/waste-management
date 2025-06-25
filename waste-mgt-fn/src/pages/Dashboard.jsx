@@ -4,6 +4,7 @@ import SideNav from './SideNav/SideNav';
 import { isAuthenticated } from '../utils/auth'; // Import the auth utility
 import { FaUser, FaBell, FaTrash, FaHistory, FaCreditCard, FaExclamationTriangle, FaChartLine, FaChartBar, FaChartPie } from 'react-icons/fa'; // Import icons from react-icons
 import { io } from 'socket.io-client';
+import { toast } from 'react-toastify';
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -60,7 +61,14 @@ const Dashboard = () => {
           Authorization: `Bearer ${token}` 
         },
       });
-      if (!response.ok) throw new Error('Failed to fetch bins');
+      if (!response.ok) {
+        let errorMsg = `Failed to fetch bins (status ${response.status})`;
+        try {
+          const errorData = await response.json();
+          if (errorData && errorData.message) errorMsg = errorData.message + ` (status ${response.status})`;
+        } catch {}
+        throw new Error(errorMsg);
+      }
       const data = await response.json();
       setBinData(
         data.map(bin => ({
@@ -72,7 +80,9 @@ const Dashboard = () => {
         }))
       );
     } catch (err) {
+      console.error('Bins fetch error:', err);
       setError(err.message);
+      toast.error(err.message);
     }
   };
 
@@ -85,11 +95,20 @@ const Dashboard = () => {
           Authorization: `Bearer ${token}`
         }
       });
-      if (!response.ok) throw new Error('Failed to fetch collections');
+      if (!response.ok) {
+        let errorMsg = `Failed to fetch collections (status ${response.status})`;
+        try {
+          const errorData = await response.json();
+          if (errorData && errorData.message) errorMsg = errorData.message + ` (status ${response.status})`;
+        } catch {}
+        throw new Error(errorMsg);
+      }
       const data = await response.json();
       setRecentCollections(data);
     } catch (err) {
+      console.error('Collections fetch error:', err);
       setError(err.message);
+      toast.error(err.message);
     }
   };
 
@@ -102,11 +121,20 @@ const Dashboard = () => {
           Authorization: `Bearer ${token}`
         }
       });
-      if (!response.ok) throw new Error('Failed to fetch payments');
+      if (!response.ok) {
+        let errorMsg = `Failed to fetch payments (status ${response.status})`;
+        try {
+          const errorData = await response.json();
+          if (errorData && errorData.message) errorMsg = errorData.message + ` (status ${response.status})`;
+        } catch {}
+        throw new Error(errorMsg);
+      }
       const data = await response.json();
       setUpcomingPayments(data);
     } catch (err) {
+      console.error('Payments fetch error:', err);
       setError(err.message);
+      toast.error(err.message);
     }
   };
 
@@ -114,16 +142,36 @@ const Dashboard = () => {
   const fetchAnalyticsData = async () => {
     try {
       const token = localStorage.getItem('token');
+      console.log('Fetching analytics with token:', token ? 'Token present' : 'No token');
+      
       const response = await fetch('http://localhost:5000/api/analytics', {
         headers: {
           Authorization: `Bearer ${token}`
         }
       });
-      if (!response.ok) throw new Error('Failed to fetch analytics');
+      
+      console.log('Analytics response status:', response.status);
+      
+      if (!response.ok) {
+        let errorMsg = `Failed to fetch analytics (status ${response.status})`;
+        try {
+          const errorData = await response.json();
+          console.log('Analytics error response:', errorData);
+          if (errorData && errorData.message) errorMsg = errorData.message + ` (status ${response.status})`;
+        } catch (parseError) {
+          console.log('Could not parse error response:', parseError);
+        }
+        throw new Error(errorMsg);
+      }
+      
       const data = await response.json();
+      console.log('Analytics data received:', data);
       setAnalyticsData(data);
     } catch (err) {
+      console.error('Analytics fetch error:', err);
       setError(err.message);
+      // Show toast with the real error
+      toast.error(err.message);
     }
   };
 

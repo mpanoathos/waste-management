@@ -110,11 +110,11 @@ export const fetchAllRoutes = (token) =>
 
 // Get all unassigned routes (admin)
 export const fetchUnassignedRoutes = (token) =>
-  axios.get(`${API_URL}/unassigned`, { headers: { Authorization: `Bearer ${token}` } });
+  axios.get(`${API_URL}/api/routes/unassigned`, { headers: { Authorization: `Bearer ${token}` } });
 
 // Assign a route to a company (admin)
 export const assignRouteToCompany = (routeId, companyId, token) =>
-  axios.post(`${API_URL}/assign`, { routeId, companyId }, { headers: { Authorization: `Bearer ${token}` } });
+  axios.post(`${API_URL}/api/routes/assign`, { routeId, companyId }, { headers: { Authorization: `Bearer ${token}` } });
 
 // Get routes for a specific company (admin)
 export const fetchCompanyRoutes = (companyId, token) =>
@@ -141,5 +141,25 @@ export const fetchCompanyPayments = async () => {
         throw error;
     }
 };
+
+// Fetch alerts for a company (admin)
+export async function fetchCompanyAlerts(token, status) {
+  const url = `http://localhost:5000/admin/alerts${status ? `?status=${status}` : ''}`;
+  const res = await fetch(url, {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+  if (!res.ok) throw new Error('Failed to fetch alerts');
+  return res.json();
+}
+
+// Resolve an alert
+export async function resolveAlert(token, alertId) {
+  const res = await fetch(`http://localhost:5000/admin/alerts/${alertId}/resolve`, {
+    method: 'PATCH',
+    headers: { Authorization: `Bearer ${token}` }
+  });
+  if (!res.ok) throw new Error('Failed to resolve alert');
+  return res.json();
+}
 
 export default api; 

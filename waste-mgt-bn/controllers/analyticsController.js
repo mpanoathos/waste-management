@@ -59,11 +59,84 @@ exports.getSystemReport = async (req, res) => {
       mostActiveCollector.collections = mostActiveCollectorGroup[0]._count.collectedById;
     }
 
-    const recentCollections = await prisma.collectionHistory.findMany({
+    // Fetch recent collections with delay calculation
+    const recentCollectionsRaw = await prisma.collectionHistory.findMany({
       orderBy: { collectedAt: 'desc' },
       take: 10,
-      include: { bin: true, collectedBy: true }
+      include: { bin: true, collectedBy: true, collectionRequest: true }
     });
+
+    // Calculate delay for each collection
+    const recentCollections = await Promise.all(recentCollectionsRaw.map(async (col) => {
+      let delayDays = null;
+      let delayed = false;
+      let requestCreatedAt = null;
+      if (col.collectionRequest) {
+        requestCreatedAt = col.collectionRequest.createdAt;
+      } else {
+        // Fallback: find the closest previous request for this bin
+        const fallbackReq = await prisma.collectionRequest.findFirst({
+          where: {
+            binId: col.binId,
+            createdAt: { lte: col.collectedAt },
+            status: { in: ['PENDING', 'COMPLETED'] }
+          },
+          orderBy: { createdAt: 'desc' }
+        });
+        if (fallbackReq) requestCreatedAt = fallbackReq.createdAt;
+      }
+      if (requestCreatedAt) {
+        const diffMs = col.collectedAt - requestCreatedAt;
+        delayDays = diffMs / (1000 * 60 * 60 * 24);
+        delayed = delayDays > 1;
+      }
+      return {
+        ...col,
+        delayed,
+        delayDays: delayDays !== null ? Number(delayDays.toFixed(2)) : null
+      };
+    }));
+
+    // Collections by day for the last 30 days (using raw SQL)
+    const collectionsByDay = await prisma.$queryRaw`
+      SELECT date_trunc('day', "collectedAt") as day, COUNT(*)::int as count
+      FROM "CollectionHistory"
+      WHERE "collectedAt" >= NOW() - INTERVAL '30 days'
+      GROUP BY day
+      ORDER BY day ASC
+    `;
+
+    // Count delayed collections in the last 30 days
+    const allCollections = await prisma.collectionHistory.findMany({
+      where: {
+        collectedAt: {
+          gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
+        }
+      },
+      include: { collectionRequest: true }
+    });
+    let delayedCollections = 0;
+    for (const col of allCollections) {
+      let requestCreatedAt = null;
+      if (col.collectionRequest) {
+        requestCreatedAt = col.collectionRequest.createdAt;
+      } else {
+        const fallbackReq = await prisma.collectionRequest.findFirst({
+          where: {
+            binId: col.binId,
+            createdAt: { lte: col.collectedAt },
+            status: { in: ['PENDING', 'COMPLETED'] }
+          },
+          orderBy: { createdAt: 'desc' }
+        });
+        if (fallbackReq) requestCreatedAt = fallbackReq.createdAt;
+      }
+      if (requestCreatedAt) {
+        const diffMs = col.collectedAt - requestCreatedAt;
+        const delayDays = diffMs / (1000 * 60 * 60 * 24);
+        if (delayDays > 1) delayedCollections++;
+      }
+    }
 
     res.json({
       totalBins,
@@ -75,7 +148,9 @@ exports.getSystemReport = async (req, res) => {
       usersThisMonth,
       usersByRole,
       mostActiveCollector,
-      recentCollections
+      recentCollections,
+      collectionsByDay,
+      delayedCollections
     });
   } catch (error) {
     res.status(500).json({ error: 'Failed to generate report', details: error });
@@ -114,5 +189,44 @@ exports.getCompanyAnalytics = async (req, res) => {
     });
   } catch (error) {
     res.status(500).json({ error: 'Failed to generate company analytics', details: error.message });
+  }
+};
+
+// Dashboard analytics endpoint for frontend
+exports.getDashboardAnalytics = async (req, res) => {
+  try {
+    const userId = req.user.id;
+
+    // Get daily collections for the last 7 days
+    const dailyCollections = await prisma.$queryRaw`
+      SELECT 
+        DATE("collectedAt") as date,
+        COUNT(*)::int as count
+      FROM "CollectionHistory"
+      WHERE "collectedAt" >= NOW() - INTERVAL '7 days'
+        AND "binId" IN (
+          SELECT id FROM "Bin" WHERE "userId" = ${userId}
+        )
+      GROUP BY DATE("collectedAt")
+      ORDER BY date ASC
+    `;
+
+    // Get route efficiency (mock data for now since routes are not fully implemented)
+    const routeEfficiency = [
+      { route: 'Route A', efficiency: 85 },
+      { route: 'Route B', efficiency: 92 },
+      { route: 'Route C', efficiency: 78 }
+    ];
+
+    res.json({
+      dailyCollections: dailyCollections || [],
+      routeEfficiency: routeEfficiency
+    });
+  } catch (error) {
+    console.error('Error fetching dashboard analytics:', error);
+    res.status(500).json({ 
+      error: 'Failed to fetch dashboard analytics', 
+      details: error.message 
+    });
   }
 }; 

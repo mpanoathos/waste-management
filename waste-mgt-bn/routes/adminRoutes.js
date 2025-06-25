@@ -3,6 +3,7 @@ const router = express.Router();
 const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 const { authenticateToken, isAdmin } = require('../middleware/auth');
+const alertController = require('../controllers/alertController');
 
 // Get all pending companies
 router.get('/pending-companies', authenticateToken, isAdmin, async (req, res) => {
@@ -69,5 +70,9 @@ router.post('/approve-company/:companyId', authenticateToken, isAdmin, async (re
         res.status(500).json({ message: 'Server error' });
     }
 });
+
+// Alerts
+router.get('/alerts', authenticateToken, isAdmin, alertController.getCompanyAlerts);
+router.patch('/alerts/:alertId/resolve', authenticateToken, isAdmin, alertController.resolveAlert);
 
 module.exports = router; 

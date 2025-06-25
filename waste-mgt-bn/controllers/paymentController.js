@@ -2,6 +2,8 @@ const { PrismaClient } = require('@prisma/client');
 const { AppError } = require('../utils/errorHandler');
 const crypto =require('crypto');
 const axios = require('axios');
+const PAYSPACK_APP_ID = process.env.PAYSPACK_APP_ID;
+const PAYSPACK_APP_SECRET = process.env.PAYSPACK_APP_SECRET;
 
 const prisma = new PrismaClient();
 
@@ -19,12 +21,7 @@ exports.initiatePayment = async (req, res, next) => {
 
         const tx_ref = generateReference();
 
-        // Debug logging for env variables
-        console.log('PAYSPACK_APP_ID:', process.env.PAYSPACK_APP_ID);
-        console.log('PAYSPACK_APP_SECRET:', process.env.PAYSPACK_APP_SECRET ? 'set' : 'not set');
         // 1. Obtain access token
-        const PAYSPACK_APP_ID = process.env.PAYSPACK_APP_ID;
-        const PAYSPACK_APP_SECRET = process.env.PAYSPACK_APP_SECRET;
         const authResponse = await axios.post('https://payments.paypack.rw/api/auth/agents/authorize', {
             client_id: PAYSPACK_APP_ID,
             client_secret: PAYSPACK_APP_SECRET,
@@ -130,6 +127,7 @@ exports.getPaymentStatus = async (req, res, next) => {
             if (paypackStatus.toUpperCase() === 'SUCCESS') newStatus = 'SUCCESS';
             else if (paypackStatus.toUpperCase() === 'FAILED') newStatus = 'FAILED';
             else if (paypackStatus.toUpperCase() === 'PENDING') newStatus = 'PENDING';
+            else if (paypackStatus.toUpperCase() === 'CANCELLED') newStatus = 'FAILED';
             await prisma.payment.update({
                 where: { id: payment.id },
                 data: { status: newStatus }
@@ -256,4 +254,30 @@ exports.getCompanyPayments = async (req, res, next) => {
         console.error('Failed to get company payments:', error);
         return next(new AppError('Failed to get company payment history', 500));
     }
+};
+
+// Admin payment report
+exports.getAdminPaymentReport = async (req, res) => {
+  try {
+    const totalPayments = await prisma.payment.count();
+    const totalAmount = await prisma.payment.aggregate({ _sum: { amount: true } });
+    const paymentsByStatus = await prisma.payment.groupBy({
+      by: ['status'],
+      _count: { status: true },
+      _sum: { amount: true }
+    });
+    const recentPayments = await prisma.payment.findMany({
+      orderBy: { createdAt: 'desc' },
+      take: 10,
+      include: { user: { select: { id: true, name: true, email: true } }, company: { select: { id: true, name: true, email: true } } }
+    });
+    res.json({
+      totalPayments,
+      totalAmount: totalAmount._sum.amount || 0,
+      paymentsByStatus,
+      recentPayments
+    });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to generate payment report', details: error.message });
+  }
 }; 

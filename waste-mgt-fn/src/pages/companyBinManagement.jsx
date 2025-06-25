@@ -3,11 +3,16 @@ import CompanySideNav from "./SideNav/CompanySideNav";
 import { toast } from 'react-toastify';
 import { fetchUsersForBinManagement, collectBin } from '../utils/api';
 import LoadingSpinner from '../components/LoadingSpinner';
+import { io } from 'socket.io-client';
 
 const BinManagement = () => {
     const [users, setUsers] = useState([]);
     const [loading, setLoading] = useState(true);
     const [collecting, setCollecting] = useState(false);
+    const [socketConnected, setSocketConnected] = useState(false);
+
+    // Initialize socket connection
+    const socket = io('http://localhost:5000');
 
     useEffect(() => {
         const fetchAllUsers = async () => {
@@ -20,6 +25,7 @@ const BinManagement = () => {
                             id: user.id || user._id,
                             name: user.name,
                             email: user.email,
+                            binId: user.binId,
                             binStatus: user.binStatus,
                             binFillLevel: user.binFillLevel,
                             binLocation: user.binLocation,
@@ -38,18 +44,72 @@ const BinManagement = () => {
         fetchAllUsers();
     }, []);
 
+    // Socket connection status
+    useEffect(() => {
+        socket.on('connect', () => {
+            console.log('Socket connected for bin management');
+            setSocketConnected(true);
+        });
+
+        socket.on('disconnect', () => {
+            console.log('Socket disconnected from bin management');
+            setSocketConnected(false);
+        });
+
+        return () => {
+            socket.off('connect');
+            socket.off('disconnect');
+        };
+    }, [socket]);
+
+    // Listen for real-time sensor updates
+    useEffect(() => {
+        socket.on('sensorUpdate', (data) => {
+            console.log('Received sensor update in bin management:', data);
+            
+            // Update only the specific user whose bin was updated
+            setUsers((prevUsers) =>
+                prevUsers.map((user) => {
+                    // Check if this user's bin matches the updated bin ID
+                    if (user.binId === data.binId) {
+                        const newFillLevel = data.fillLevel;
+                        let newStatus = 'EMPTY';
+                        if (newFillLevel >= 80) newStatus = 'FULL';
+                        else if (newFillLevel >= 50) newStatus = 'PARTIAL';
+
+                        console.log(`Updating user ${user.name} bin: ${newFillLevel}% - ${newStatus}`);
+                        
+                        // Show toast for significant updates
+                        if (newFillLevel >= 80) {
+                            toast.info(`${user.name}'s bin is now FULL (${newFillLevel}%)`, {
+                                position: "top-right",
+                                autoClose: 3000,
+                            });
+                        }
+                        
+                        return {
+                            ...user,
+                            binFillLevel: newFillLevel,
+                            binStatus: newStatus
+                        };
+                    }
+                    return user;
+                })
+            );
+        });
+
+        return () => {
+            socket.off('sensorUpdate');
+        };
+    }, [socket]);
+
     // Handle collected function
     const handleCollected = async (userId) => {
         try {
             setCollecting(true);
             await collectBin(userId);
 
-            // Update local state to reflect collected status
-            setUsers((prevUsers) =>
-                prevUsers.map((user) =>
-                    user.id === userId ? { ...user, binStatus: 'EMPTY' } : user
-                )
-            );
+            // Don't update local state - keep the bin status as is so button remains available
             toast.success('Bin marked as collected successfully');
         } catch (error) {
             console.error('Error marking as collected:', error);
@@ -76,8 +136,14 @@ const BinManagement = () => {
             <div className="p-6 overflow-auto w-full">
                 <div className="flex justify-between items-center mb-6">
                     <h1 className="text-2xl font-bold">User Bin Management</h1>
-                    <div className="text-sm text-gray-500">
-                        Total Users: {users.length}
+                    <div className="flex items-center space-x-4">
+                        <div className={`flex items-center text-sm ${socketConnected ? 'text-green-600' : 'text-red-600'}`}>
+                            <div className={`w-2 h-2 rounded-full mr-2 ${socketConnected ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`}></div>
+                            {socketConnected ? 'Live Updates' : 'Disconnected'}
+                        </div>
+                        <div className="text-sm text-gray-500">
+                            Total Users: {users.length}
+                        </div>
                     </div>
                 </div>
                 <div className="bg-white shadow rounded-lg overflow-hidden">
@@ -117,14 +183,17 @@ const BinManagement = () => {
                                         <div className="flex items-center">
                                             <div className="w-16 bg-gray-200 rounded-full h-2 mr-2">
                                                 <div 
-                                                    className={`h-2 rounded-full ${
+                                                    className={`h-2 rounded-full transition-all duration-500 ease-in-out ${
                                                         user.binFillLevel >= 80 ? 'bg-red-500' :
                                                         user.binFillLevel >= 50 ? 'bg-yellow-500' : 'bg-green-500'
                                                     }`}
                                                     style={{ width: `${user.binFillLevel}%` }}
                                                 ></div>
                                             </div>
-                                            <span className="text-xs text-gray-500">{user.binFillLevel}%</span>
+                                            <span className="text-xs text-gray-500 min-w-[2rem]">{user.binFillLevel}%</span>
+                                            <div className="ml-1">
+                                                <div className="w-1 h-1 bg-green-500 rounded-full animate-pulse"></div>
+                                            </div>
                                         </div>
                                     </td>
                                     <td className="py-3 px-4 whitespace-nowrap text-sm text-gray-900">{user.binLocation}</td>
@@ -144,7 +213,7 @@ const BinManagement = () => {
                                             ) : user.binStatus === 'FULL' ? (
                                                 'Collect'
                                             ) : (
-                                                'Collected'
+                                                'Not Full'
                                             )}
                                         </button>
                                     </td>

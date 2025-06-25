@@ -89,7 +89,6 @@ exports.getUserProfile = async (req, res) => {
     const userId = req.user.id; // Use the user ID from the token
     const user = await prisma.user.findUnique({ where: { id: userId } });
     if (!user) return res.status(404).json({ message: 'User not found' });
-
     res.json({ user });
   } catch (error) {
     res.status(500).json({ message: 'Could not fetch user', error });
@@ -340,12 +339,23 @@ exports.collectUserBin = async (req, res) => {
       }
     });
 
+    // Find the most recent collection request for this bin before now
+    const collectionRequest = await prisma.collectionRequest.findFirst({
+      where: {
+        binId: bin.id,
+        createdAt: { lte: new Date() },
+        status: { in: ['PENDING', 'COMPLETED'] }
+      },
+      orderBy: { createdAt: 'desc' }
+    });
+
     // Create collection history record
     const collectionHistory = await prisma.collectionHistory.create({
       data: {
         binId: bin.id,
         collectedById: req.user.id,
-        notes: `Bin collected by ${req.user.name}`
+        notes: `Bin collected by ${req.user.name}`,
+        collectionRequestId: collectionRequest ? collectionRequest.id : null
       },
       include: {
         bin: {
@@ -427,12 +437,23 @@ exports.collectBin = async (req, res) => {
       }
     });
 
+    // Find the most recent collection request for this bin before now
+    const collectionRequest = await prisma.collectionRequest.findFirst({
+      where: {
+        binId: binId,
+        createdAt: { lte: new Date() },
+        status: { in: ['PENDING', 'COMPLETED'] }
+      },
+      orderBy: { createdAt: 'desc' }
+    });
+
     // Then create the collection history
     const collectionHistory = await prisma.collectionHistory.create({
       data: {
         binId: binId,
         collectedById: collectedById,
-        notes: `Bin collected by company user: ${req.user.name}`
+        notes: `Bin collected by company user: ${req.user.name}`,
+        collectionRequestId: collectionRequest ? collectionRequest.id : null
       },
       include: {
         bin: {
@@ -831,6 +852,7 @@ exports.getUsersForBinManagement = async (req, res) => {
       name: user.name,
       email: user.email,
       role: user.role,
+      binId: user.bins && user.bins.length > 0 ? user.bins[0].id : null,
       binStatus: user.bins && user.bins.length > 0 ? user.bins[0].status : 'EMPTY',
       binFillLevel: user.bins && user.bins.length > 0 ? user.bins[0].fillLevel : 0,
       binLocation: user.bins && user.bins.length > 0 ? user.bins[0].location : 'Unknown'
@@ -845,6 +867,49 @@ exports.getUsersForBinManagement = async (req, res) => {
     res.status(500).json({ 
       success: false,
       message: 'Failed to fetch users for bin management',
+      error: error.message 
+    });
+  }
+};
+
+// Admin: Delete a user by ID
+exports.deleteUser = async (req, res) => {
+  try {
+    const { userId } = req.params;
+    
+    if (!userId || isNaN(Number(userId))) {
+      return res.status(400).json({ 
+        success: false,
+        message: 'Invalid user ID' 
+      });
+    }
+
+    // Check if user exists before attempting to delete
+    const existingUser = await prisma.user.findUnique({
+      where: { id: Number(userId) }
+    });
+
+    if (!existingUser) {
+      return res.status(404).json({ 
+        success: false,
+        message: 'User not found' 
+      });
+    }
+
+    // Delete the user - all related records will be automatically deleted due to cascade
+    await prisma.user.delete({ 
+      where: { id: Number(userId) } 
+    });
+
+    res.status(200).json({ 
+      success: true,
+      message: 'User deleted successfully' 
+    });
+  } catch (error) {
+    console.error('Error deleting user:', error);
+    res.status(500).json({ 
+      success: false,
+      message: 'Failed to delete user', 
       error: error.message 
     });
   }

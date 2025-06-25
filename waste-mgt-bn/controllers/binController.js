@@ -24,7 +24,18 @@ exports.createBin = async (req, res) => {
 // Get all bins
 exports.getBins = async (req, res) => {
   try {
-    const bins = await prisma.bin.findMany();
+    const bins = await prisma.bin.findMany({
+      include: {
+        user: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            role: true
+          }
+        }
+      }
+    });
     // Normalize status
     const normalizedBins = bins.map(bin => ({
       ...bin,
@@ -300,5 +311,108 @@ exports.debugBinStatuses = async (req, res) => {
     });
   } catch (error) {
     res.status(500).json({ message: "Error debugging bin statuses", error });
+  }
+};
+
+// Debug endpoint to show all bins with user info
+exports.debugAllBins = async (req, res) => {
+  try {
+    const bins = await prisma.bin.findMany({
+      include: {
+        user: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            role: true
+          }
+        }
+      },
+      orderBy: {
+        id: 'asc'
+      }
+    });
+    
+    const binsWithValidCoordinates = bins.filter(bin => 
+      bin.latitude && bin.longitude && 
+      bin.latitude !== 0 && bin.longitude !== 0 &&
+      bin.latitude !== -1.9441 && bin.longitude !== 30.0619
+    );
+    
+    const binsWithDefaultCoordinates = bins.filter(bin => 
+      bin.latitude === -1.9441 && bin.longitude === 30.0619
+    );
+    
+    const binsWithoutCoordinates = bins.filter(bin => 
+      !bin.latitude || !bin.longitude || 
+      bin.latitude === 0 || bin.longitude === 0
+    );
+    
+    res.status(200).json({
+      totalBins: bins.length,
+      binsWithValidCoordinates: binsWithValidCoordinates.length,
+      binsWithDefaultCoordinates: binsWithDefaultCoordinates.length,
+      binsWithoutCoordinates: binsWithoutCoordinates.length,
+      allBins: bins.map(bin => ({
+        id: bin.id,
+        status: bin.status,
+        fillLevel: bin.fillLevel,
+        latitude: bin.latitude,
+        longitude: bin.longitude,
+        location: bin.location,
+        userId: bin.userId,
+        userName: bin.user?.name || 'No User',
+        userEmail: bin.user?.email || 'No Email',
+        userRole: bin.user?.role || 'No Role'
+      })),
+      summary: {
+        byStatus: bins.reduce((acc, bin) => {
+          acc[bin.status] = (acc[bin.status] || 0) + 1;
+          return acc;
+        }, {}),
+        byUserRole: bins.reduce((acc, bin) => {
+          const role = bin.user?.role || 'Unknown';
+          acc[role] = (acc[role] || 0) + 1;
+          return acc;
+        }, {})
+      }
+    });
+  } catch (error) {
+    res.status(500).json({ message: "Error debugging all bins", error });
+  }
+};
+
+// Auto-spread overlapping bins so all markers are visible
+exports.spreadOverlappingBins = async (req, res) => {
+  try {
+    const bins = await prisma.bin.findMany();
+    // Group bins by lat/lng string
+    const coordMap = {};
+    bins.forEach(bin => {
+      const key = `${bin.latitude},${bin.longitude}`;
+      if (!coordMap[key]) coordMap[key] = [];
+      coordMap[key].push(bin);
+    });
+    let updated = 0;
+    for (const binsAtSameSpot of Object.values(coordMap)) {
+      if (binsAtSameSpot.length > 1) {
+        // Keep the first bin, offset the rest
+        for (let i = 1; i < binsAtSameSpot.length; i++) {
+          const bin = binsAtSameSpot[i];
+          const offset = 0.0001 * i;
+          await prisma.bin.update({
+            where: { id: bin.id },
+            data: {
+              latitude: bin.latitude + offset,
+              longitude: bin.longitude + offset
+            }
+          });
+          updated++;
+        }
+      }
+    }
+    res.status(200).json({ message: `Spread ${updated} overlapping bins.` });
+  } catch (error) {
+    res.status(500).json({ message: "Error spreading overlapping bins", error });
   }
 };

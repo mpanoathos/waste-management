@@ -36,7 +36,7 @@ router.post('/:id/alert-company', binController.alertCompany);
 // Check if a pending collection request exists for a bin
 router.get('/:id/pending-request', binController.getPendingCollectionRequest);
 
-// Debug endpoint to check bin statuses
-router.get('/debug/statuses', binController.debugBinStatuses);
+// Auto-spread overlapping bins
+router.post('/spread-overlapping-bins', binController.spreadOverlappingBins);
 
 module.exports = router;

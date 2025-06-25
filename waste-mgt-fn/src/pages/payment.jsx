@@ -4,7 +4,7 @@ import { toast } from 'react-toastify';
 import axios from 'axios';
 import LoadingSpinner from '../components/LoadingSpinner';
 import SideNav from './SideNav/SideNav';
-import { FaDownload } from 'react-icons/fa';
+import { FaDownload, FaCreditCard } from 'react-icons/fa';
 import { PDFDownloadLink, Document, Page, Text, View, StyleSheet } from '@react-pdf/renderer';
 
 // PDF Styles
@@ -435,4 +435,223 @@ const Payment = () => {
     );
 };
 
+const CompanyPayments = () => {
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [paymentForm, setPaymentForm] = useState({ amount: '', phoneNumber: '', description: '' });
+  const [paymentLoading, setPaymentLoading] = useState(false);
+  const [filterStatus, setFilterStatus] = useState('ALL');
+  const [selectedPayment, setSelectedPayment] = useState(null);
+  const [showDetailsModal, setShowDetailsModal] = useState(false);
+  const [paymentHistory, setPaymentHistory] = useState([]);
+  const [loading, setLoading] = useState(false);
+
+  // Fetch payment history (reuse logic from Payment)
+  const fetchPaymentHistory = async () => {
+    setLoading(true);
+    try {
+      const response = await axios.get('http://localhost:5000/api/payments/company-history', {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem('token')}`
+        }
+      });
+      setPaymentHistory(response.data.payments);
+    } catch (error) {
+      toast.error('Failed to fetch payment history');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchPaymentHistory();
+  }, []);
+
+  const handlePaymentInputChange = (e) => {
+    setPaymentForm({ ...paymentForm, [e.target.name]: e.target.value });
+  };
+
+  const handlePaymentSubmit = async (e) => {
+    e.preventDefault();
+    setPaymentLoading(true);
+    try {
+      const token = localStorage.getItem('token');
+      const response = await axios.post('http://localhost:5000/api/payments/initiate', paymentForm, {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      });
+      toast.success('Payment initiated successfully');
+      setShowPaymentModal(false);
+      setPaymentForm({ amount: '', phoneNumber: '', description: '' });
+      fetchPaymentHistory();
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Failed to initiate payment');
+    } finally {
+      setPaymentLoading(false);
+    }
+  };
+
+  const filteredPayments = filterStatus === 'ALL'
+    ? paymentHistory
+    : paymentHistory.filter(p => p.status === filterStatus);
+
+  return (
+    <div className="container mx-auto px-4 py-8">
+      <h1 className="text-3xl font-bold mb-8">Company Payments</h1>
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center space-x-2">
+          <button
+            onClick={() => setShowPaymentModal(true)}
+            className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+          >
+            <FaCreditCard className="mr-2" /> Make Payment
+          </button>
+          <select
+            value={filterStatus}
+            onChange={e => setFilterStatus(e.target.value)}
+            className="ml-4 px-3 py-2 border rounded"
+          >
+            <option value="ALL">All Statuses</option>
+            <option value="SUCCESS">Success</option>
+            <option value="PENDING">Pending</option>
+            <option value="FAILED">Failed</option>
+          </select>
+        </div>
+        {filteredPayments.length > 0 && (
+          <PDFDownloadLink
+            document={<PaymentHistoryPDF payments={filteredPayments} />}
+            fileName="company-payment-history.pdf"
+            className="flex items-center px-4 py-2 bg-gray-800 text-white rounded-lg hover:bg-gray-700"
+          >
+            {({ loading }) => (
+              <>
+                <FaDownload className="mr-2" />
+                {loading ? 'Generating...' : 'Download PDF'}
+              </>
+            )}
+          </PDFDownloadLink>
+        )}
+      </div>
+      {/* Payment Modal */}
+      {showPaymentModal && (
+        <div className="fixed inset-0 flex items-center justify-center z-50 bg-black bg-opacity-40">
+          <div className="bg-white rounded-lg shadow-lg p-6 w-full max-w-md">
+            <h2 className="text-lg font-semibold mb-4 text-gray-900">Make a Payment</h2>
+            <form onSubmit={handlePaymentSubmit}>
+              <div className="mb-4">
+                <label className="block text-gray-700 text-sm font-bold mb-2">Amount (RWF)</label>
+                <input
+                  type="number"
+                  name="amount"
+                  value={paymentForm.amount}
+                  onChange={handlePaymentInputChange}
+                  className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  required
+                />
+              </div>
+              <div className="mb-4">
+                <label className="block text-gray-700 text-sm font-bold mb-2">Phone Number</label>
+                <input
+                  type="text"
+                  name="phoneNumber"
+                  value={paymentForm.phoneNumber}
+                  onChange={handlePaymentInputChange}
+                  className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  required
+                />
+              </div>
+              <div className="mb-4">
+                <label className="block text-gray-700 text-sm font-bold mb-2">Description</label>
+                <input
+                  type="text"
+                  name="description"
+                  value={paymentForm.description}
+                  onChange={handlePaymentInputChange}
+                  className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+              <div className="flex justify-end space-x-2">
+                <button
+                  type="button"
+                  onClick={() => setShowPaymentModal(false)}
+                  className="px-4 py-2 bg-gray-200 text-gray-800 rounded hover:bg-gray-300"
+                  disabled={paymentLoading}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+                  disabled={paymentLoading}
+                >
+                  {paymentLoading ? 'Processing...' : 'Pay'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+      {/* Payment Table */}
+      <div className="overflow-x-auto mt-6">
+        {loading ? (
+          <p className="text-gray-500">Loading payments...</p>
+        ) : filteredPayments.length === 0 ? (
+          <p className="text-gray-500">No payment history available</p>
+        ) : (
+          <table className="min-w-full">
+            <thead>
+              <tr className="bg-gray-50">
+                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Amount</th>
+                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="bg-white divide-y divide-gray-200">
+              {filteredPayments.map((payment) => (
+                <tr key={payment.id} className="hover:bg-gray-50">
+                  <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-500">{new Date(payment.createdAt).toLocaleDateString()}</td>
+                  <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-900">RWF {payment.amount.toFixed(2)}</td>
+                  <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-700">{payment.status}</td>
+                  <td className="px-4 py-2 whitespace-nowrap text-sm">
+                    <button
+                      onClick={() => { setSelectedPayment(payment); setShowDetailsModal(true); }}
+                      className="text-blue-600 hover:underline text-xs"
+                    >
+                      Details
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </div>
+      {/* Payment Details Modal */}
+      {showDetailsModal && selectedPayment && (
+        <div className="fixed inset-0 flex items-center justify-center z-50 bg-black bg-opacity-40">
+          <div className="bg-white rounded-lg shadow-lg p-6 w-full max-w-md">
+            <h2 className="text-lg font-semibold mb-4 text-gray-900">Payment Details</h2>
+            <div className="mb-2"><strong>Date:</strong> {new Date(selectedPayment.createdAt).toLocaleString()}</div>
+            <div className="mb-2"><strong>Amount:</strong> RWF {selectedPayment.amount.toFixed(2)}</div>
+            <div className="mb-2"><strong>Status:</strong> {selectedPayment.status}</div>
+            <div className="mb-2"><strong>Phone Number:</strong> {selectedPayment.phoneNumber}</div>
+            <div className="mb-2"><strong>Description:</strong> {selectedPayment.description || 'N/A'}</div>
+            <div className="mb-2"><strong>Reference ID:</strong> {selectedPayment.referenceId}</div>
+            <div className="flex justify-end mt-4">
+              <button
+                onClick={() => setShowDetailsModal(false)}
+                className="px-4 py-2 bg-gray-200 text-gray-800 rounded hover:bg-gray-300"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
 export default Payment;
+export { CompanyPayments };

@@ -2,6 +2,18 @@ import React, { useEffect, useState } from 'react';
 import AdminSideNav from './SideNav/adminSideNav';
 import { FaTrash, FaUsers, FaBoxOpen, FaHistory, FaChartPie, FaUserTie, FaDownload, FaFilePdf } from 'react-icons/fa';
 import { PDFDownloadLink, Document, Page, Text, View, StyleSheet } from '@react-pdf/renderer';
+import { Line } from 'react-chartjs-2';
+import {
+  Chart as ChartJS,
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  Title,
+  Tooltip,
+  Legend
+} from 'chart.js';
+ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend);
 
 const statusColors = {
   FULL: 'bg-red-100 text-red-700',
@@ -102,6 +114,9 @@ const Analytics = () => {
   const [report, setReport] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [showOnlyDelayed, setShowOnlyDelayed] = useState(false);
+  const [daysFilter, setDaysFilter] = useState('all');
+  const [paymentReport, setPaymentReport] = useState(null);
 
   useEffect(() => {
     fetch('http://localhost:5000/analytics/report')
@@ -118,7 +133,8 @@ const Analytics = () => {
           binsByStatus: data.binsByStatus || [],
           usersByRole: data.usersByRole || [],
           recentCollections: data.recentCollections || [],
-          mostActiveCollector: data.mostActiveCollector || null
+          mostActiveCollector: data.mostActiveCollector || null,
+          collectionsByDay: data.collectionsByDay || []
         };
         setReport(safeData);
         setLoading(false);
@@ -128,7 +144,59 @@ const Analytics = () => {
         setError('Failed to fetch analytics report');
         setLoading(false);
       });
+    // Fetch payment report
+    fetch('http://localhost:5000/api/payments/admin-report', {
+      headers: {
+        'Authorization': `Bearer ${localStorage.getItem('token')}`
+      }
+    })
+      .then(res => res.json())
+      .then(data => setPaymentReport(data))
+      .catch(err => console.error('Payment report fetch error:', err));
   }, []);
+
+  // Prepare data for the timeline chart
+  const timelineData = {
+    labels: report?.collectionsByDay?.map(d => new Date(d.collectedAt || d.date_trunc).toLocaleDateString()) || [],
+    datasets: [
+      {
+        label: 'Collections per Day',
+        data: report?.collectionsByDay?.map(d => d._count?.id || 0) || [],
+        fill: false,
+        borderColor: 'rgb(75, 192, 192)',
+        tension: 0.1
+      }
+    ]
+  };
+
+  // Compute dynamic filter options based on collection dates
+  const collectionDates = (report?.recentCollections || []).map(rc => new Date(rc.collectedAt));
+  const now = new Date();
+  // Get unique day differences
+  const uniqueDayDiffs = Array.from(new Set(collectionDates.map(date => Math.floor((now - date) / (1000 * 60 * 60 * 24))))).sort((a, b) => a - b);
+  // Build options: always include 'All', then each unique day difference as 'Last X days'
+  const filterOptions = [{ value: 'all', label: 'All' }];
+  uniqueDayDiffs.forEach(days => {
+    if (days === 0) {
+      filterOptions.push({ value: 1, label: 'Today' });
+    } else {
+      filterOptions.push({ value: days + 1, label: `Last ${days + 1} days` });
+    }
+  });
+  // Remove duplicates in label
+  const seen = new Set();
+  const finalFilterOptions = filterOptions.filter(opt => {
+    if (seen.has(opt.label)) return false;
+    seen.add(opt.label);
+    return true;
+  });
+
+  // Filter recent collections by selected days
+  const filteredCollections = (report?.recentCollections || []).filter(rc => {
+    if (daysFilter === 'all') return true;
+    const collectedAt = new Date(rc.collectedAt);
+    return (now - collectedAt) / (1000 * 60 * 60 * 24) <= Number(daysFilter);
+  });
 
   if (loading) return <div className="flex h-screen"><AdminSideNav /><div className="flex-1 flex items-center justify-center text-lg">Loading analytics...</div></div>;
   if (error) return <div className="flex h-screen"><AdminSideNav /><div className="flex-1 flex items-center justify-center text-red-600 text-lg">{error}</div></div>;
@@ -230,10 +298,85 @@ const Analytics = () => {
             </div>
           </div>
 
+          {/* Payment Report Section */}
+          {paymentReport && (
+            <div className="bg-white rounded-lg shadow-md p-6 mb-10">
+              <h2 className="text-2xl font-semibold text-gray-800 mb-6 flex items-center">Payment Report</h2>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+                <div className="flex flex-col items-start">
+                  <span className="text-gray-500 text-sm">Total Payments</span>
+                  <span className="text-2xl font-bold text-gray-800">{paymentReport.totalPayments}</span>
+                </div>
+                <div className="flex flex-col items-start">
+                  <span className="text-gray-500 text-sm">Total Amount</span>
+                  <span className="text-2xl font-bold text-green-700">{paymentReport.totalAmount}</span>
+                </div>
+                <div className="flex flex-col items-start">
+                  <span className="text-gray-500 text-sm">Payments by Status</span>
+                  <ul className="mt-1">
+                    {(paymentReport.paymentsByStatus || []).map(s => (
+                      <li key={s.status} className="text-sm text-gray-700">
+                        <span className="font-semibold">{s.status}:</span> {s._count.status} ({s._sum.amount})
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              </div>
+              <h3 className="text-lg font-semibold text-gray-800 mb-2 mt-4">Recent Payments</h3>
+              <div className="overflow-x-auto">
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ID</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Amount</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">User</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Company</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {(paymentReport.recentPayments || []).map(p => (
+                      <tr key={p.id} className="hover:bg-gray-50 transition-colors duration-200">
+                        <td className="px-6 py-4 whitespace-nowrap font-medium text-gray-800">{p.id}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-green-700">{p.amount}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-gray-700">{p.status}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-gray-700">{p.user ? p.user.name : '-'}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-gray-700">{p.company ? p.company.name : '-'}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-gray-600">{new Date(p.createdAt).toLocaleString()}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
           {/* Recent Collections Table */}
           <div className="bg-white rounded-lg shadow-md p-6">
-            <h2 className="text-2xl font-semibold text-gray-800 mb-6 flex items-center"><FaHistory className="mr-2 text-lg text-green-500" />Recent Collections</h2>
-            {report.recentCollections && report.recentCollections.length > 0 ? (
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-2xl font-semibold text-gray-800 flex items-center"><FaHistory className="mr-2 text-lg text-green-500" />Recent Collections</h2>
+              <div className="flex gap-2 items-center">
+                <label htmlFor="daysFilter" className="text-sm text-gray-600 mr-2">Show:</label>
+                <select
+                  id="daysFilter"
+                  value={daysFilter}
+                  onChange={e => setDaysFilter(e.target.value)}
+                  className="px-2 py-1 rounded border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+                >
+                  {finalFilterOptions.map(opt => (
+                    <option key={opt.value} value={opt.value}>{opt.label}</option>
+                  ))}
+                </select>
+                <button
+                  className={`px-4 py-2 rounded-md text-sm font-medium transition-all duration-200 ${showOnlyDelayed ? 'bg-red-600 text-white' : 'bg-gray-200 text-gray-700'}`}
+                  onClick={() => setShowOnlyDelayed(v => !v)}
+                >
+                  {showOnlyDelayed ? 'Show All' : 'Show Only Delayed'}
+                </button>
+              </div>
+            </div>
+            {filteredCollections && filteredCollections.length > 0 ? (
               <div className="overflow-x-auto">
                 <table className="min-w-full divide-y divide-gray-200">
                   <thead className="bg-gray-50">
@@ -241,14 +384,25 @@ const Analytics = () => {
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Bin ID</th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Collected By</th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date & Time</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Delay</th>
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
-                    {report.recentCollections.map(rc => (
-                      <tr key={rc.id} className="hover:bg-gray-50 transition-colors duration-200">
+                    {(showOnlyDelayed
+                      ? filteredCollections.filter(rc => rc.delayed)
+                      : filteredCollections
+                    ).map(rc => (
+                      <tr key={rc.id} className={`hover:bg-gray-50 transition-colors duration-200 ${rc.delayed ? 'bg-red-50' : ''}`}>
                         <td className="px-6 py-4 whitespace-nowrap font-medium text-gray-800">#{rc.binId}</td>
                         <td className="px-6 py-4 whitespace-nowrap text-gray-700">{rc.collectedBy?.name || 'Unknown'}</td>
                         <td className="px-6 py-4 whitespace-nowrap text-gray-600">{new Date(rc.collectedAt).toLocaleString()}</td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          {rc.delayed ? (
+                            <span className="text-red-600 font-bold">Delayed ({rc.delayDays} days)</span>
+                          ) : (
+                            <span className="text-green-600">On Time</span>
+                          )}
+                        </td>
                       </tr>
                     ))}
                   </tbody>

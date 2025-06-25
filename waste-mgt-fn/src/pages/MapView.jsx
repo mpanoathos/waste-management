@@ -9,6 +9,7 @@ import LoadingSpinner from '../components/LoadingSpinner';
 import { FaFilter, FaTrash, FaCheckCircle, FaExclamationTriangle, FaRoute, FaMapMarkerAlt } from 'react-icons/fa';
 import CompanySideNav from './SideNav/CompanySideNav';
 import { fetchMyRoutes } from '../utils/api';
+import MarkerClusterGroup from 'react-leaflet-cluster';
 
 // Custom SVG icons for bin statuses
 const binIcons = {
@@ -201,6 +202,27 @@ const MapView = () => {
     }, {});
   }, [bins]);
 
+  // Debug information for bin filtering
+  const debugInfo = useMemo(() => {
+    const binsWithCoordinates = bins.filter(bin => 
+      !isNaN(Number(bin.latitude)) && !isNaN(Number(bin.longitude))
+    );
+    const binsWithoutCoordinates = bins.filter(bin => 
+      isNaN(Number(bin.latitude)) || isNaN(Number(bin.longitude))
+    );
+    const binsAfterStatusFilter = filteredBins.filter(bin => 
+      !isNaN(Number(bin.latitude)) && !isNaN(Number(bin.longitude))
+    );
+    
+    return {
+      totalBins: bins.length,
+      binsWithCoordinates: binsWithCoordinates.length,
+      binsWithoutCoordinates: binsWithoutCoordinates.length,
+      binsAfterStatusFilter: binsAfterStatusFilter.length,
+      binsShownOnMap: binsAfterStatusFilter.length
+    };
+  }, [bins, filteredBins]);
+
   // Autofix handler for missing coordinates
   const handleAutoFixBins = async () => {
     try {
@@ -335,30 +357,72 @@ const MapView = () => {
                 attribution="&copy; OpenStreetMap contributors"
               />
               {/* Bin Markers */}
-              {filteredBins
-                .filter(bin => !isNaN(Number(bin.latitude)) && !isNaN(Number(bin.longitude)))
-                .map((bin) => {
-                  const statusKey = getStatusKey(bin.status);
-                  const icon = bin.userId === currentUserId ? userBinIcon : (binIcons[statusKey] || binIcons.EMPTY);
-                  
-                  return (
-                    <Marker
-                      key={bin.id}
-                      position={[Number(bin.latitude), Number(bin.longitude)]}
-                      icon={icon}
-                      eventHandlers={{ click: () => handleBinClick(bin) }}
-                    >
-                      <Popup>
-                        <div>
-                          <strong>Status:</strong> {getStatusKey(bin.status)}<br />
-                          <strong>Last Collected:</strong> {bin.lastCollected ? new Date(bin.lastCollected).toLocaleDateString() : 'N/A'}<br />
-                          <strong>Location:</strong> {bin.address || bin.location}<br />
-                          {bin.userId === currentUserId && <span style={{color: '#007bff', fontWeight: 'bold'}}>Your Bin</span>}
-                        </div>
-                      </Popup>
-                    </Marker>
-                  );
-                })}
+              <MarkerClusterGroup>
+                {filteredBins
+                  .filter(bin => !isNaN(Number(bin.latitude)) && !isNaN(Number(bin.longitude)))
+                  .map((bin) => {
+                    const statusKey = getStatusKey(bin.status);
+                    const icon = bin.userId === currentUserId ? userBinIcon : (binIcons[statusKey] || binIcons.EMPTY);
+                    
+                    return (
+                      <Marker
+                        key={bin.id}
+                        position={[Number(bin.latitude), Number(bin.longitude)]}
+                        icon={icon}
+                        eventHandlers={{ click: () => handleBinClick(bin) }}
+                      >
+                        <Popup>
+                          <div className="min-w-[200px]">
+                            <div className="mb-3">
+                              <h3 className="font-bold text-lg text-gray-800 mb-1">Bin #{bin.id}</h3>
+                              {bin.user && (
+                                <div className="mb-2">
+                                  <p className="text-sm text-gray-600">
+                                    <strong>Owner:</strong> {bin.user.name}
+                                  </p>
+                                  <p className="text-xs text-gray-500">
+                                    {bin.user.email}
+                                  </p>
+                                </div>
+                              )}
+                            </div>
+                            
+                            <div className="space-y-1 text-sm">
+                              <div className="flex items-center">
+                                <span className="font-medium text-gray-700">Status:</span>
+                                <span className={`ml-2 px-2 py-1 rounded-full text-xs font-medium ${
+                                  getStatusKey(bin.status) === 'FULL' ? 'bg-red-100 text-red-700' :
+                                  getStatusKey(bin.status) === 'HALF_FULL' ? 'bg-yellow-100 text-yellow-700' :
+                                  'bg-green-100 text-green-700'
+                                }`}>
+                                  {getStatusKey(bin.status)}
+                                </span>
+                              </div>
+                              
+                              <p className="text-gray-600">
+                                <strong>Fill Level:</strong> {bin.fillLevel || bin.latestFillLevel || 0}%
+                              </p>
+                              
+                              <p className="text-gray-600">
+                                <strong>Last Collected:</strong> {bin.lastCollected ? new Date(bin.lastCollected).toLocaleDateString() : 'Never'}
+                              </p>
+                              
+                              <p className="text-gray-600">
+                                <strong>Location:</strong> {bin.address || bin.location || 'Unknown'}
+                              </p>
+                              
+                              {bin.userId === currentUserId && (
+                                <div className="mt-2 p-2 bg-blue-50 rounded border border-blue-200">
+                                  <span className="text-blue-700 text-xs font-medium">Your Bin</span>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </Popup>
+                      </Marker>
+                    );
+                  })}
+              </MarkerClusterGroup>
               
               {/* Route Polylines */}
               {showRoutes && routes.map((route, index) => (
@@ -427,37 +491,33 @@ const MapView = () => {
               </div>
             </div>
           )}
-          {/* Bin Details Sidebar */}
-          {selectedBin && (
-            <div className="absolute top-4 right-4 w-80 bg-white rounded-lg shadow-lg p-4">
-              <div className="flex justify-between items-start mb-4">
-                <h3 className="text-lg font-semibold">Bin Details</h3>
-                <button
-                  onClick={() => setSelectedBin(null)}
-                  className="text-gray-500 hover:text-gray-700"
-                >
-                  ✕
-                </button>
-              </div>
-              <div className="space-y-2">
-                <p><span className="font-medium">ID:</span> {selectedBin.id}</p>
-                <p><span className="font-medium">Status:</span> {selectedBin.status}</p>
-                <p><span className="font-medium">Last Collection:</span> {selectedBin.lastCollected ? new Date(selectedBin.lastCollected).toLocaleDateString() : 'N/A'}</p>
-                <p><span className="font-medium">Location:</span> {selectedBin.address || selectedBin.location}</p>
-                <div className="mt-4">
-                  <button
-                    onClick={() => {
-                      toast.info('Collection request sent');
-                    }}
-                    className="w-full bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
-                  >
-                    Schedule Collection
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
         </div>
+        {/* Bin Details Bar at the Bottom */}
+        {selectedBin && (
+          <div className="fixed left-0 right-0 bottom-0 z-50 bg-white shadow-lg border-t border-gray-200 p-4 flex flex-col md:flex-row md:items-center md:justify-between max-w-4xl mx-auto rounded-t-lg" style={{margin: '0 auto'}}>
+            <div className="flex-1 flex flex-col md:flex-row md:items-center md:gap-8">
+              <div className="mb-2 md:mb-0">
+                <span className="font-medium">ID:</span> {selectedBin.id}
+              </div>
+              {selectedBin.user && (
+                <>
+                  <div className="mb-2 md:mb-0"><span className="font-medium">Owner:</span> {selectedBin.user.name}</div>
+                  <div className="mb-2 md:mb-0"><span className="font-medium">Email:</span> {selectedBin.user.email}</div>
+                </>
+              )}
+              <div className="mb-2 md:mb-0"><span className="font-medium">Status:</span> {selectedBin.status}</div>
+              <div className="mb-2 md:mb-0"><span className="font-medium">Fill Level:</span> {selectedBin.fillLevel || selectedBin.latestFillLevel || 0}%</div>
+              <div className="mb-2 md:mb-0"><span className="font-medium">Last Collection:</span> {selectedBin.lastCollected ? new Date(selectedBin.lastCollected).toLocaleDateString() : 'Never'}</div>
+              <div className="mb-2 md:mb-0"><span className="font-medium">Location:</span> {selectedBin.address || selectedBin.location}</div>
+            </div>
+            <button
+              onClick={() => setSelectedBin(null)}
+              className="ml-4 mt-4 md:mt-0 px-4 py-2 bg-gray-200 text-gray-700 rounded hover:bg-gray-300 font-semibold"
+            >
+              Close
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );
