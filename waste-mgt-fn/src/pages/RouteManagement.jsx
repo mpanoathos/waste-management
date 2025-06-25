@@ -157,13 +157,9 @@ const RouteManagement = ({ token }) => {
     setGeocoding(true);
     setMessage('');
     try {
-      // Use OpenStreetMap Nominatim API
-      const response = await axios.get('https://nominatim.openstreetmap.org/search', {
-        params: {
-          q: address,
-          format: 'json',
-          limit: 3
-        }
+      // Use backend proxy endpoint for geocoding
+      const response = await axios.get('http://localhost:5000/api/geocode', {
+        params: { address }
       });
       if (response.data && response.data.length > 0) {
         // Use all returned results as route points

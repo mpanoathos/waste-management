@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const userController = require('../controllers/userController');
 const { authenticateToken, isAdmin } = require('../middleware/auth');
+const fetch = require('node-fetch');
 
 // Public routes
 router.post('/register', userController.registerUser);
@@ -53,6 +54,27 @@ router.get('/test-email', async (req, res) => {
       message: 'Email test failed', 
       error: error.message 
     });
+  }
+});
+
+// Geocode address via backend proxy
+router.post('/geocode', async (req, res) => {
+  const { address } = req.body;
+  if (!address) {
+    return res.status(400).json({ message: 'Address is required' });
+  }
+  const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(address)}&format=json&limit=1`;
+  try {
+    const response = await fetch(url, {
+      headers: { 'User-Agent': 'waste-mgt-app/1.0' }
+    });
+    if (!response.ok) {
+      return res.status(response.status).json({ message: 'Geocoding failed' });
+    }
+    const data = await response.json();
+    res.json(data);
+  } catch (err) {
+    res.status(500).json({ message: 'Geocoding error', error: err.message });
   }
 });
 

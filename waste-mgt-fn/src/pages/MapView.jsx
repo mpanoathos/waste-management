@@ -58,6 +58,20 @@ const getStatusKey = (status) => {
   return s;
 };
 
+// Helper: Calculate distance between two lat/lng points in meters (Haversine formula)
+function getDistanceMeters(lat1, lng1, lat2, lng2) {
+  const toRad = (value) => (value * Math.PI) / 180;
+  const R = 6371000; // Earth radius in meters
+  const dLat = toRad(lat2 - lat1);
+  const dLng = toRad(lng2 - lng1);
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) *
+    Math.sin(dLng / 2) * Math.sin(dLng / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c;
+}
+
 const MapView = () => {
   const [loading, setLoading] = useState(true);
   const [loadingMessage, setLoadingMessage] = useState('Initializing...');
@@ -178,8 +192,23 @@ const MapView = () => {
     setSelectedBin(bin);
   };
 
-  const filteredBins = useMemo(() => {
+  // Only show bins that are within 100 meters of any route coordinate
+  const binsOnCompanyRoutes = useMemo(() => {
+    if (!routes.length) return [];
+    const threshold = 100; // meters
     return bins.filter(bin => {
+      if (isNaN(Number(bin.latitude)) || isNaN(Number(bin.longitude))) return false;
+      return routes.some(route =>
+        (route.coordinates || []).some(coord =>
+          getDistanceMeters(Number(bin.latitude), Number(bin.longitude), Number(coord.lat), Number(coord.lng)) <= threshold
+        )
+      );
+    });
+  }, [bins, routes]);
+
+  // Update filteredBins to use binsOnCompanyRoutes
+  const filteredBins = useMemo(() => {
+    return binsOnCompanyRoutes.filter(bin => {
       const normalizedBinStatus = getStatusKey(bin.status);
       if (filters.status !== 'ALL' && normalizedBinStatus !== filters.status) return false;
       if (filters.lastCollected !== 'ALL') {
@@ -192,7 +221,7 @@ const MapView = () => {
       }
       return true;
     });
-  }, [bins, filters]);
+  }, [binsOnCompanyRoutes, filters]);
 
   const statusCounts = useMemo(() => {
     return bins.reduce((acc, bin) => {
@@ -494,7 +523,7 @@ const MapView = () => {
         </div>
         {/* Bin Details Bar at the Bottom */}
         {selectedBin && (
-          <div className="fixed left-0 right-0 bottom-0 z-50 bg-white shadow-lg border-t border-gray-200 p-4 flex flex-col md:flex-row md:items-center md:justify-between max-w-4xl mx-auto rounded-t-lg" style={{margin: '0 auto'}}>
+          <div className="fixed left-0 right-0 bottom-0 z-50 bg-transparent shadow-lg border-t border-gray-200 p-4 flex flex-col md:flex-row md:items-center md:justify-between max-w-4xl mx-auto rounded-t-lg" style={{margin: '0 auto'}}>
             <div className="flex-1 flex flex-col md:flex-row md:items-center md:gap-8">
               <div className="mb-2 md:mb-0">
                 <span className="font-medium">ID:</span> {selectedBin.id}

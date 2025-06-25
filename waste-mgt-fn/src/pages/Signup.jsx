@@ -19,12 +19,18 @@ const Signup = () => {
     const [isSubmitting, setIsSubmitting] = useState(false);
     const navigate = useNavigate();
 
-    // Geocode address using OpenStreetMap Nominatim
+    // Geocode address using backend proxy
     async function geocodeAddress(address) {
-        const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(address)}&format=json&limit=1`;
-        const res = await fetch(url, { headers: { 'User-Agent': 'waste-mgt-app/1.0' } });
+        const res = await fetch('http://localhost:5000/user/geocode', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ address })
+        });
+        if (!res.ok) {
+            throw new Error('Failed to geocode address');
+        }
         const data = await res.json();
-        if (data.length === 0) {
+        if (!data || data.length === 0) {
             throw new Error("Address doesn't exist");
         }
         return { latitude: parseFloat(data[0].lat), longitude: parseFloat(data[0].lon) };

@@ -21,6 +21,7 @@ const chatRoutes = require('./routes/chatRoutes');
 const reportThreadRoutes = require('./routes/reportThreadRoutes');
 const webhookRoutes = require('./routes/webhookRoutes');
 const collectionRoutes = require('./routes/collectionRoutes');
+const geocodeRoutes = require('./routes/geocodeRoutes');
 
 // Log environment variables (development only)
 if (process.env.NODE_ENV === 'development') {
@@ -74,6 +75,7 @@ app.use('/report-thread', reportThreadRoutes);
 app.use('/webhook', webhookRoutes);
 app.use('/api/routes', routeRoutes);
 app.use('/collection', collectionRoutes);
+app.use('/api', geocodeRoutes);
 
 // Sample route
 app.get('/', (req, res) => {
