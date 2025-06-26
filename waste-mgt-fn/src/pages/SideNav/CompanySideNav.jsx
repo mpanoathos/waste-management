@@ -9,7 +9,6 @@ const CompanySideNav = () => {
   };
 
   const navItems = [
-    { path: '/company-dashboard', icon: <FaBuilding />, label: 'Dashboard' },
     { path: '/map-view', icon: <FaMap />, label: 'Map View' },
     { path: '/bin-management', icon: <FaTrash />, label: 'Bin Management' },
     { path: '/my-routes', icon: <FaRoute />, label: 'My Routes' },

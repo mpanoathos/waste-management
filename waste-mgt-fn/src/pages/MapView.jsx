@@ -1,12 +1,12 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { MapContainer, TileLayer, Marker, Popup, Polyline } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Popup, Polyline, Tooltip } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import axios from 'axios';
 import { toast } from 'react-toastify';
 import SideNav from './SideNav/SideNav';
 import LoadingSpinner from '../components/LoadingSpinner';
-import { FaFilter, FaTrash, FaCheckCircle, FaExclamationTriangle, FaRoute, FaMapMarkerAlt } from 'react-icons/fa';
+import { FaFilter, FaTrash, FaCheckCircle, FaExclamationTriangle, FaRoute, FaMapMarkerAlt, FaSearch, FaTimes, FaInfoCircle } from 'react-icons/fa';
 import CompanySideNav from './SideNav/CompanySideNav';
 import { fetchMyRoutes } from '../utils/api';
 import MarkerClusterGroup from 'react-leaflet-cluster';
@@ -85,6 +85,8 @@ const MapView = () => {
   });
   const [showFilters, setShowFilters] = useState(false);
   const [error, setError] = useState(null);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [showFabMenu, setShowFabMenu] = useState(false);
 
   // Default center (Kigali, Rwanda)
   const defaultCenter = {
@@ -192,23 +194,8 @@ const MapView = () => {
     setSelectedBin(bin);
   };
 
-  // Only show bins that are within 100 meters of any route coordinate
-  const binsOnCompanyRoutes = useMemo(() => {
-    if (!routes.length) return [];
-    const threshold = 100; // meters
-    return bins.filter(bin => {
-      if (isNaN(Number(bin.latitude)) || isNaN(Number(bin.longitude))) return false;
-      return routes.some(route =>
-        (route.coordinates || []).some(coord =>
-          getDistanceMeters(Number(bin.latitude), Number(bin.longitude), Number(coord.lat), Number(coord.lng)) <= threshold
-        )
-      );
-    });
-  }, [bins, routes]);
-
-  // Update filteredBins to use binsOnCompanyRoutes
   const filteredBins = useMemo(() => {
-    return binsOnCompanyRoutes.filter(bin => {
+    return bins.filter(bin => {
       const normalizedBinStatus = getStatusKey(bin.status);
       if (filters.status !== 'ALL' && normalizedBinStatus !== filters.status) return false;
       if (filters.lastCollected !== 'ALL') {
@@ -221,7 +208,7 @@ const MapView = () => {
       }
       return true;
     });
-  }, [binsOnCompanyRoutes, filters]);
+  }, [bins, filters]);
 
   const statusCounts = useMemo(() => {
     return bins.reduce((acc, bin) => {
@@ -286,74 +273,27 @@ const MapView = () => {
     handleAutoFixBins();
   };
 
+  // Search filter
+  const searchedBins = useMemo(() => {
+    if (!searchTerm.trim()) return filteredBins;
+    const term = searchTerm.toLowerCase();
+    return filteredBins.filter(bin => {
+      return (
+        (bin.id && bin.id.toString().includes(term)) ||
+        (bin.user && bin.user.name && bin.user.name.toLowerCase().includes(term)) ||
+        (bin.user && bin.user.email && bin.user.email.toLowerCase().includes(term)) ||
+        (bin.location && bin.location.toLowerCase().includes(term)) ||
+        (bin.address && bin.address.toLowerCase().includes(term))
+      );
+    });
+  }, [filteredBins, searchTerm]);
+
   return (
     <div className="flex h-screen bg-gray-100">
       <CompanySideNav />
       <div className="flex-1 flex flex-col overflow-hidden">
-        <div className="bg-white shadow-sm p-4">
-          <div className="flex justify-between items-center">
-            <h1 className="text-2xl font-bold text-gray-800">Bin Monitoring Dashboard</h1>
-            <div className="flex gap-2">
-              <button
-                onClick={() => setShowRoutes(!showRoutes)}
-                className={`flex items-center px-4 py-2 rounded-lg transition ${
-                  showRoutes 
-                    ? 'bg-green-600 text-white hover:bg-green-700' 
-                    : 'bg-gray-300 text-gray-700 hover:bg-gray-400'
-                }`}
-              >
-                <FaRoute className="mr-2" />
-                {showRoutes ? 'Hide Routes' : 'Show Routes'}
-              </button>
-              <button
-                onClick={() => setShowFilters(!showFilters)}
-                className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-              >
-                <FaFilter className="mr-2" />
-                Filters
-              </button>
-              <button
-                onClick={handleUpdateCoordinates}
-                className="flex items-center px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700"
-              >
-                <FaMapMarkerAlt className="mr-2" />
-                Fix Coordinates
-              </button>
-            </div>
-          </div>
-          {/* Status Summary */}
-          <div className="mt-4 grid grid-cols-4 gap-4">
-            <div className="bg-red-100 p-3 rounded-lg">
-              <div className="flex items-center">
-                <FaExclamationTriangle className="text-red-600 mr-2" />
-                <span className="font-semibold">Full Bins:</span>
-              </div>
-              <p className="text-2xl font-bold text-red-600">{statusCounts.FULL || 0}</p>
-            </div>
-            <div className="bg-yellow-100 p-3 rounded-lg">
-              <div className="flex items-center">
-                <FaExclamationTriangle className="text-yellow-600 mr-2" />
-                <span className="font-semibold">Half Full:</span>
-              </div>
-              <p className="text-2xl font-bold text-yellow-600">{statusCounts.HALF_FULL || 0}</p>
-            </div>
-            <div className="bg-green-100 p-3 rounded-lg">
-              <div className="flex items-center">
-                <FaCheckCircle className="text-green-600 mr-2" />
-                <span className="font-semibold">Empty:</span>
-              </div>
-              <p className="text-2xl font-bold text-green-600">{statusCounts.EMPTY || 0}</p>
-            </div>
-            <div className="bg-gray-100 p-3 rounded-lg">
-              <div className="flex items-center">
-                <FaTrash className="text-gray-600 mr-2" />
-                <span className="font-semibold">Total Bins:</span>
-              </div>
-              <p className="text-2xl font-bold text-gray-600">{bins.length}</p>
-            </div>
-          </div>
-        </div>
         <div className="flex-1 relative overflow-hidden">
+          {/* Map and overlays */}
           {loading ? (
             <div className="absolute inset-0 flex items-center justify-center bg-gray-100 bg-opacity-75 z-10">
               <div className="text-center">
@@ -380,6 +320,7 @@ const MapView = () => {
               center={[defaultCenter.lat, defaultCenter.lng]}
               zoom={13}
               style={{ width: '100%', height: 'calc(100vh - 200px)' }}
+              className="rounded-lg shadow-lg"
             >
               <TileLayer
                 url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
@@ -387,72 +328,68 @@ const MapView = () => {
               />
               {/* Bin Markers */}
               <MarkerClusterGroup>
-                {filteredBins
+                {searchedBins
                   .filter(bin => !isNaN(Number(bin.latitude)) && !isNaN(Number(bin.longitude)))
                   .map((bin) => {
                     const statusKey = getStatusKey(bin.status);
                     const icon = bin.userId === currentUserId ? userBinIcon : (binIcons[statusKey] || binIcons.EMPTY);
-                    
                     return (
                       <Marker
                         key={bin.id}
                         position={[Number(bin.latitude), Number(bin.longitude)]}
                         icon={icon}
-                        eventHandlers={{ click: () => handleBinClick(bin) }}
                       >
-                        <Popup>
+                        <Tooltip direction="top" offset={[0, -20]} opacity={1} sticky>
                           <div className="min-w-[200px]">
-                            <div className="mb-3">
-                              <h3 className="font-bold text-lg text-gray-800 mb-1">Bin #{bin.id}</h3>
-                              {bin.user && (
-                                <div className="mb-2">
-                                  <p className="text-sm text-gray-600">
-                                    <strong>Owner:</strong> {bin.user.name}
-                                  </p>
-                                  <p className="text-xs text-gray-500">
-                                    {bin.user.email}
-                                  </p>
-                                </div>
+                            <div className="mb-2 flex items-center gap-2">
+                              <span className={`inline-block w-3 h-3 rounded-full ${
+                                statusKey === 'FULL' ? 'bg-red-500' :
+                                statusKey === 'HALF_FULL' ? 'bg-yellow-400' :
+                                statusKey === 'EMPTY' ? 'bg-green-500' :
+                                statusKey === 'COLLECTED' ? 'bg-gray-400' : 'bg-blue-500'
+                              }`}></span>
+                              <h3 className="font-bold text-lg text-gray-800">Bin #{bin.id}</h3>
+                              {bin.userId === currentUserId && (
+                                <span className="ml-2 px-2 py-1 bg-blue-100 text-blue-700 text-xs rounded font-semibold">Your Bin</span>
                               )}
                             </div>
-                            
+                            {bin.user && (
+                              <div className="mb-2">
+                                <p className="text-sm text-gray-600"><strong>Owner:</strong> {bin.user.name}</p>
+                                <p className="text-xs text-gray-500">{bin.user.email}</p>
+                              </div>
+                            )}
                             <div className="space-y-1 text-sm">
-                              <div className="flex items-center">
+                              <div className="flex items-center gap-2">
                                 <span className="font-medium text-gray-700">Status:</span>
-                                <span className={`ml-2 px-2 py-1 rounded-full text-xs font-medium ${
-                                  getStatusKey(bin.status) === 'FULL' ? 'bg-red-100 text-red-700' :
-                                  getStatusKey(bin.status) === 'HALF_FULL' ? 'bg-yellow-100 text-yellow-700' :
-                                  'bg-green-100 text-green-700'
+                                <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                                  statusKey === 'FULL' ? 'bg-red-100 text-red-700' :
+                                  statusKey === 'HALF_FULL' ? 'bg-yellow-100 text-yellow-700' :
+                                  statusKey === 'EMPTY' ? 'bg-green-100 text-green-700' :
+                                  statusKey === 'COLLECTED' ? 'bg-gray-100 text-gray-700' : 'bg-blue-100 text-blue-700'
                                 }`}>
-                                  {getStatusKey(bin.status)}
+                                  {statusKey}
                                 </span>
                               </div>
-                              
-                              <p className="text-gray-600">
-                                <strong>Fill Level:</strong> {bin.fillLevel || bin.latestFillLevel || 0}%
-                              </p>
-                              
-                              <p className="text-gray-600">
-                                <strong>Last Collected:</strong> {bin.lastCollected ? new Date(bin.lastCollected).toLocaleDateString() : 'Never'}
-                              </p>
-                              
-                              <p className="text-gray-600">
-                                <strong>Location:</strong> {bin.address || bin.location || 'Unknown'}
-                              </p>
-                              
-                              {bin.userId === currentUserId && (
-                                <div className="mt-2 p-2 bg-blue-50 rounded border border-blue-200">
-                                  <span className="text-blue-700 text-xs font-medium">Your Bin</span>
-                                </div>
-                              )}
+                              <div className="flex items-center gap-2">
+                                <span className="font-medium text-gray-700">Fill Level:</span>
+                                <span className="text-gray-800">{bin.fillLevel || bin.latestFillLevel || 0}%</span>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <span className="font-medium text-gray-700">Last Collected:</span>
+                                <span className="text-gray-800">{bin.lastCollected ? new Date(bin.lastCollected).toLocaleDateString() : 'Never'}</span>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <span className="font-medium text-gray-700">Location:</span>
+                                <span className="text-gray-800">{bin.address || bin.location || 'Unknown'}</span>
+                              </div>
                             </div>
                           </div>
-                        </Popup>
+                        </Tooltip>
                       </Marker>
                     );
                   })}
               </MarkerClusterGroup>
-              
               {/* Route Polylines */}
               {showRoutes && routes.map((route, index) => (
                 <Polyline
@@ -473,57 +410,47 @@ const MapView = () => {
               ))}
             </MapContainer>
           )}
-          {/* Filters Panel */}
-          {showFilters && (
-            <div className="absolute top-4 right-4 w-80 bg-white rounded-lg shadow-lg p-4">
-              <div className="flex justify-between items-start mb-4">
-                <h3 className="text-lg font-semibold">Filter Bins</h3>
-                <button
-                  onClick={() => setShowFilters(false)}
-                  className="text-gray-500 hover:text-gray-700"
-                >
-                  ✕
-                </button>
-              </div>
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Status
-                  </label>
-                  <select
-                    value={filters.status}
-                    onChange={(e) => setFilters({ ...filters, status: e.target.value })}
-                    className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  >
-                    <option value="ALL">All Statuses</option>
-                    <option value="FULL">Full</option>
-                    <option value="HALF_FULL">Half Full</option>
-                    <option value="EMPTY">Empty</option>
-                    <option value="COLLECTED">Collected</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Last Collected
-                  </label>
-                  <select
-                    value={filters.lastCollected}
-                    onChange={(e) => setFilters({ ...filters, lastCollected: e.target.value })}
-                    className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  >
-                    <option value="ALL">All Time</option>
-                    <option value="TODAY">Today</option>
-                    <option value="WEEK">This Week</option>
-                    <option value="MONTH">This Month</option>
-                  </select>
-                </div>
+        </div>
+        {/* Status Summary as Card Row */}
+        <div className="bg-white shadow-sm p-4 sticky top-0 z-20">
+          <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-4">
+            <h1 className="text-2xl font-bold text-gray-800">Bin Monitoring Dashboard</h1>
+          </div>
+          {/* Card Row */}
+          <div className="mt-6 grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="bg-white border-l-4 border-red-500 shadow hover:shadow-lg transition p-4 rounded-lg flex items-center gap-3">
+              <FaExclamationTriangle className="text-red-500 text-3xl" />
+              <div>
+                <div className="text-gray-500 text-xs font-semibold">Full Bins</div>
+                <div className="text-2xl font-bold text-red-600">{statusCounts.FULL || 0}</div>
               </div>
             </div>
-          )}
+            <div className="bg-white border-l-4 border-yellow-400 shadow hover:shadow-lg transition p-4 rounded-lg flex items-center gap-3">
+              <FaExclamationTriangle className="text-yellow-400 text-3xl" />
+              <div>
+                <div className="text-gray-500 text-xs font-semibold">Half Full</div>
+                <div className="text-2xl font-bold text-yellow-600">{statusCounts.HALF_FULL || 0}</div>
+              </div>
+            </div>
+            <div className="bg-white border-l-4 border-green-500 shadow hover:shadow-lg transition p-4 rounded-lg flex items-center gap-3">
+              <FaCheckCircle className="text-green-500 text-3xl" />
+              <div>
+                <div className="text-gray-500 text-xs font-semibold">Empty</div>
+                <div className="text-2xl font-bold text-green-600">{statusCounts.EMPTY || 0}</div>
+              </div>
+            </div>
+            <div className="bg-white border-l-4 border-gray-400 shadow hover:shadow-lg transition p-4 rounded-lg flex items-center gap-3">
+              <FaTrash className="text-gray-400 text-3xl" />
+              <div>
+                <div className="text-gray-500 text-xs font-semibold">Total Bins</div>
+                <div className="text-2xl font-bold text-gray-600">{bins.length}</div>
+              </div>
+            </div>
+          </div>
         </div>
         {/* Bin Details Bar at the Bottom */}
         {selectedBin && (
-          <div className="fixed left-0 right-0 bottom-0 z-50 bg-transparent shadow-lg border-t border-gray-200 p-4 flex flex-col md:flex-row md:items-center md:justify-between max-w-4xl mx-auto rounded-t-lg" style={{margin: '0 auto'}}>
+          <div className="fixed left-0 right-0 bottom-0 z-50 bg-white shadow-lg border-t border-gray-200 p-4 flex flex-col md:flex-row md:items-center md:justify-between max-w-4xl mx-auto rounded-t-lg animate-slide-up" style={{margin: '0 auto'}}>
             <div className="flex-1 flex flex-col md:flex-row md:items-center md:gap-8">
               <div className="mb-2 md:mb-0">
                 <span className="font-medium">ID:</span> {selectedBin.id}

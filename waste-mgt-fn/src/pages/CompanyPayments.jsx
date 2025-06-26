@@ -21,20 +21,24 @@ const PaymentHistoryPDF = ({ payments }) => (
       <Text style={styles.title}>Company Payment History Report</Text>
       <View style={styles.table}>
         <View style={[styles.tableRow, styles.tableHeader]}>
-          <Text style={[styles.tableCell, styles.headerCell, { width: '30%' }]}>Date</Text>
-          <Text style={[styles.tableCell, styles.headerCell, { width: '30%' }]}>Amount</Text>
-          <Text style={[styles.tableCell, styles.headerCell, { width: '40%' }]}>Status</Text>
+          <Text style={[styles.tableCell, styles.headerCell, { width: '25%' }]}>Date</Text>
+          <Text style={[styles.tableCell, styles.headerCell, { width: '30%' }]}>Payer</Text>
+          <Text style={[styles.tableCell, styles.headerCell, { width: '25%' }]}>Amount</Text>
+          <Text style={[styles.tableCell, styles.headerCell, { width: '20%' }]}>Reference</Text>
         </View>
         {payments.map((payment) => (
           <View key={payment.id} style={styles.tableRow}>
-            <Text style={[styles.tableCell, { width: '30%' }]}>
+            <Text style={[styles.tableCell, { width: '25%' }]}>
               {new Date(payment.createdAt).toLocaleDateString()}
             </Text>
             <Text style={[styles.tableCell, { width: '30%' }]}>
+              {payment.user ? payment.user.name : 'Unknown User'}
+            </Text>
+            <Text style={[styles.tableCell, { width: '25%' }]}>
               RWF {payment.amount.toFixed(2)}
             </Text>
-            <Text style={[styles.tableCell, { width: '40%' }]}>
-              {payment.status}
+            <Text style={[styles.tableCell, { width: '20%' }]}>
+              {payment.referenceId}
             </Text>
           </View>
         ))}
@@ -49,7 +53,6 @@ const CompanyPayments = () => {
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [paymentForm, setPaymentForm] = useState({ amount: '', phoneNumber: '', description: '' });
   const [paymentLoading, setPaymentLoading] = useState(false);
-  const [filterStatus, setFilterStatus] = useState('ALL');
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedPayment, setSelectedPayment] = useState(null);
 
@@ -100,11 +103,12 @@ const CompanyPayments = () => {
   };
 
   const filteredPayments = companyPayments.filter(payment => {
-    const matchesStatus = filterStatus === 'ALL' || payment.status === filterStatus;
     const matchesSearch = searchTerm === '' ||
       (payment.referenceId && payment.referenceId.toLowerCase().includes(searchTerm.toLowerCase())) ||
-      (payment.phoneNumber && payment.phoneNumber.toLowerCase().includes(searchTerm.toLowerCase()));
-    return matchesStatus && matchesSearch;
+      (payment.phoneNumber && payment.phoneNumber.toLowerCase().includes(searchTerm.toLowerCase())) ||
+      (payment.user && payment.user.name && payment.user.name.toLowerCase().includes(searchTerm.toLowerCase())) ||
+      (payment.user && payment.user.email && payment.user.email.toLowerCase().includes(searchTerm.toLowerCase()));
+    return matchesSearch;
   });
 
   return (
@@ -119,19 +123,9 @@ const CompanyPayments = () => {
           <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
             <h2 className="text-xl font-bold text-gray-800">Payment History</h2>
             <div className="flex flex-wrap gap-2">
-              <select
-                value={filterStatus}
-                onChange={e => setFilterStatus(e.target.value)}
-                className="px-2 py-1 border rounded"
-              >
-                <option value="ALL">All Statuses</option>
-                <option value="SUCCESS">Success</option>
-                <option value="PENDING">Pending</option>
-                <option value="FAILED">Failed</option>
-              </select>
               <input
                 type="text"
-                placeholder="Search by Ref/Phone"
+                placeholder="Search by Payer, Ref, or Phone"
                 value={searchTerm}
                 onChange={e => setSearchTerm(e.target.value)}
                 className="px-2 py-1 border rounded"
@@ -162,8 +156,8 @@ const CompanyPayments = () => {
                 <thead>
                   <tr className="bg-gray-50">
                     <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Payer</th>
                     <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Amount</th>
-                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
                     <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Reference ID</th>
                     <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Phone</th>
                     <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Updated</th>
@@ -174,8 +168,17 @@ const CompanyPayments = () => {
                   {filteredPayments.map((payment) => (
                     <tr key={payment.id}>
                       <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-500">{new Date(payment.createdAt).toLocaleDateString()}</td>
+                      <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-900">
+                        {payment.user ? (
+                          <div>
+                            <div className="font-medium">{payment.user.name}</div>
+                            <div className="text-gray-500 text-xs">{payment.user.email}</div>
+                          </div>
+                        ) : (
+                          <span className="text-gray-400">Unknown User</span>
+                        )}
+                      </td>
                       <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-900">RWF {payment.amount.toFixed(2)}</td>
-                      <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-700">{payment.status}</td>
                       <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-700">{payment.referenceId}</td>
                       <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-700">{payment.phoneNumber || '-'}</td>
                       <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-700">{payment.updatedAt ? new Date(payment.updatedAt).toLocaleDateString() : '-'}</td>
@@ -195,8 +198,8 @@ const CompanyPayments = () => {
                 <h2 className="text-lg font-semibold mb-4 text-gray-900">Payment Details</h2>
                 <ul className="mb-4">
                   <li><b>Date:</b> {new Date(selectedPayment.createdAt).toLocaleString()}</li>
+                  <li><b>Payer:</b> {selectedPayment.user ? `${selectedPayment.user.name} (${selectedPayment.user.email})` : 'Unknown User'}</li>
                   <li><b>Amount:</b> RWF {selectedPayment.amount.toFixed(2)}</li>
-                  <li><b>Status:</b> {selectedPayment.status}</li>
                   <li><b>Reference ID:</b> {selectedPayment.referenceId}</li>
                   <li><b>Phone:</b> {selectedPayment.phoneNumber || '-'}</li>
                   <li><b>Updated:</b> {selectedPayment.updatedAt ? new Date(selectedPayment.updatedAt).toLocaleString() : '-'}</li>

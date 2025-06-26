@@ -799,7 +799,7 @@ exports.getPendingCompanies = async (req, res) => {
 exports.getAllCompanies = async (req, res) => {
   try {
     const companies = await prisma.user.findMany({
-      where: { role: 'COMPANY' },
+      where: { role: 'COMPANY', approvalStatus: 'APPROVED' },
       select: {
         id: true,
         name: true,

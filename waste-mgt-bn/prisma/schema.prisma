@@ -159,7 +159,7 @@ model Alert {
   id        Int      @id @default(autoincrement())
   binId     Int?
   bin       Bin?     @relation(fields: [binId], references: [id])
-  companyId Int
+  companyId Int?
   company   User     @relation("CompanyAlerts", fields: [companyId], references: [id])
   type      String
   message   String

@@ -4,7 +4,6 @@ import Login from './pages/Login';
 import './index.css';
 import Signup from './pages/Signup';
 import Dashboard from './pages/Dashboard';
-import CompanyDashboard from './pages/companyDashboard';
 import Profile from './pages/profile';
 import CollectionHistory from './pages/CollectionHistory';
 import CompanyCollectionHistory from './pages/CompanyCollectionHistory';
@@ -40,7 +39,6 @@ function App() {
           <Route path="/company-collection-history" element={<CompanyCollectionHistory />} />
           <Route path="/payments" element={<Payment />} />
           <Route path="/company-payments" element={<CompanyPayments />} />
-          <Route path="/company-dashboard" element={<CompanyDashboard />} />
           <Route path="/admin-dashboard" element={<AdminDashboard />} />
           <Route path="/bin-management" element={<BinManagement />} />
           <Route path="/reset-password" element={<ResetPassword />} />

@@ -142,9 +142,12 @@ const Payment = () => {
     const [showInvoice, setShowInvoice] = useState(false);
     const [invoiceData, setInvoiceData] = useState(null);
     const user = JSON.parse(localStorage.getItem('user'));
+    const [companies, setCompanies] = useState([]);
+    const [selectedCompanyId, setSelectedCompanyId] = useState('');
 
     useEffect(() => {
         fetchPaymentHistory();
+        fetchCompanies();
     }, []);
 
     const fetchPaymentHistory = async () => {
@@ -161,6 +164,18 @@ const Payment = () => {
         }
     };
 
+    const fetchCompanies = async () => {
+        try {
+            const token = localStorage.getItem('token');
+            const response = await axios.get('http://localhost:5000/user/companies', {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            setCompanies(response.data.companies || []);
+        } catch (error) {
+            toast.error('Failed to fetch companies');
+        }
+    };
+
     const handleInputChange = (e) => {
         setFormData({
             ...formData,
@@ -174,10 +189,16 @@ const Payment = () => {
         setRedirectUrl(null);
         setShowRedirectModal(false);
 
+        if (!selectedCompanyId) {
+            toast.error('Please select a company to pay');
+            setLoading(false);
+            return;
+        }
+
         try {
             const response = await axios.post(
                 'http://localhost:5000/api/payments/initiate',
-                formData,
+                { ...formData, companyId: selectedCompanyId },
                 {
                     headers: {
                         Authorization: `Bearer ${localStorage.getItem('token')}`
@@ -247,6 +268,24 @@ const Payment = () => {
                         <div className="bg-white rounded-lg shadow-md p-6">
                             <h2 className="text-xl font-semibold mb-4">Make a Payment</h2>
                             <form onSubmit={handleSubmit}>
+                                <div className="mb-4">
+                                    <label className="block text-gray-700 text-sm font-bold mb-2">
+                                        Select Company
+                                    </label>
+                                    <select
+                                        value={selectedCompanyId}
+                                        onChange={e => setSelectedCompanyId(e.target.value)}
+                                        className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                        required
+                                    >
+                                        <option value="">-- Select a company --</option>
+                                        {companies.map(company => (
+                                            <option key={company.id} value={company.id}>
+                                                {company.companyName || company.name} ({company.email})
+                                            </option>
+                                        ))}
+                                    </select>
+                                </div>
                                 <div className="mb-4">
                                     <label className="block text-gray-700 text-sm font-bold mb-2">
                                         Amount (RWF)

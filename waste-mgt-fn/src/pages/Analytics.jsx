@@ -117,6 +117,367 @@ const Analytics = () => {
   const [showOnlyDelayed, setShowOnlyDelayed] = useState(false);
   const [daysFilter, setDaysFilter] = useState('all');
   const [paymentReport, setPaymentReport] = useState(null);
+  
+  // Payment filters
+  const [paymentDateFilter, setPaymentDateFilter] = useState('all');
+  const [paymentStatusFilter, setPaymentStatusFilter] = useState('all');
+  const [paymentAmountFilter, setPaymentAmountFilter] = useState('all');
+  const [paymentUserFilter, setPaymentUserFilter] = useState('');
+  const [paymentCompanyFilter, setPaymentCompanyFilter] = useState('');
+  
+  // Collection filters
+  const [collectionCollectorFilter, setCollectionCollectorFilter] = useState('all');
+  const [collectionBinStatusFilter, setCollectionBinStatusFilter] = useState('all');
+  const [showCollectionDownloadMenu, setShowCollectionDownloadMenu] = useState(false);
+
+  // Clear all filters function
+  const clearAllFilters = () => {
+    setPaymentDateFilter('all');
+    setPaymentStatusFilter('all');
+    setPaymentAmountFilter('all');
+    setPaymentUserFilter('');
+    setPaymentCompanyFilter('');
+    setCollectionCollectorFilter('all');
+    setCollectionBinStatusFilter('all');
+    setDaysFilter('all');
+    setShowOnlyDelayed(false);
+  };
+
+  // Download filtered data functions
+  const downloadFilteredPayments = () => {
+    if (filteredPayments.length === 0) {
+      alert('No payments to download');
+      return;
+    }
+
+    const csvContent = [
+      // CSV Header
+      ['ID', 'Amount', 'Status', 'User', 'Company', 'Date', 'Reference ID', 'Phone Number'].join(','),
+      // CSV Data
+      ...filteredPayments.map(p => [
+        p.id,
+        p.amount,
+        p.status,
+        p.user ? p.user.name : '',
+        p.company ? p.company.name : '',
+        new Date(p.createdAt).toLocaleString(),
+        p.referenceId || '',
+        p.phoneNumber || ''
+      ].join(','))
+    ].join('\n');
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', `filtered_payments_${new Date().toISOString().split('T')[0]}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const downloadFilteredCollections = () => {
+    const collectionsToDownload = showOnlyDelayed 
+      ? finalFilteredCollections.filter(rc => rc.delayed)
+      : finalFilteredCollections;
+
+    if (collectionsToDownload.length === 0) {
+      alert('No collections to download');
+      return;
+    }
+
+    const csvContent = [
+      // CSV Header
+      ['Bin ID', 'Collected By', 'Date & Time', 'Delay', 'Delay Days', 'Notes'].join(','),
+      // CSV Data
+      ...collectionsToDownload.map(rc => [
+        rc.binId,
+        rc.collectedBy ? rc.collectedBy.name : 'Unknown',
+        new Date(rc.collectedAt).toLocaleString(),
+        rc.delayed ? 'Delayed' : 'On Time',
+        rc.delayDays || '',
+        rc.notes || ''
+      ].join(','))
+    ].join('\n');
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', `filtered_collections_${new Date().toISOString().split('T')[0]}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  // Additional collection download functions
+  const downloadCollectionsByCollector = () => {
+    const collectionsToDownload = showOnlyDelayed 
+      ? finalFilteredCollections.filter(rc => rc.delayed)
+      : finalFilteredCollections;
+
+    if (collectionsToDownload.length === 0) {
+      alert('No collections to download');
+      return;
+    }
+
+    // Group by collector
+    const groupedByCollector = collectionsToDownload.reduce((acc, rc) => {
+      const collectorName = rc.collectedBy ? rc.collectedBy.name : 'Unknown';
+      if (!acc[collectorName]) {
+        acc[collectorName] = [];
+      }
+      acc[collectorName].push(rc);
+      return acc;
+    }, {});
+
+    let reportContent = `Collections Report by Collector\n`;
+    reportContent += `Generated on: ${new Date().toLocaleString()}\n`;
+    reportContent += `Total Collections: ${collectionsToDownload.length}\n\n`;
+
+    Object.entries(groupedByCollector).forEach(([collector, collections]) => {
+      reportContent += `=== ${collector} ===\n`;
+      reportContent += `Total Collections: ${collections.length}\n`;
+      reportContent += `Delayed Collections: ${collections.filter(c => c.delayed).length}\n`;
+      reportContent += `On Time Collections: ${collections.filter(c => !c.delayed).length}\n\n`;
+      
+      reportContent += `Details:\n`;
+      reportContent += `Bin ID,Date & Time,Delay,Delay Days,Notes\n`;
+      collections.forEach(rc => {
+        reportContent += `${rc.binId},${new Date(rc.collectedAt).toLocaleString()},${rc.delayed ? 'Delayed' : 'On Time'},${rc.delayDays || ''},${rc.notes || ''}\n`;
+      });
+      reportContent += '\n';
+    });
+
+    const blob = new Blob([reportContent], { type: 'text/plain;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', `collections_by_collector_${new Date().toISOString().split('T')[0]}.txt`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const downloadDelayedCollectionsOnly = () => {
+    const delayedCollections = finalFilteredCollections.filter(rc => rc.delayed);
+
+    if (delayedCollections.length === 0) {
+      alert('No delayed collections found');
+      return;
+    }
+
+    const csvContent = [
+      // CSV Header
+      ['Bin ID', 'Collected By', 'Date & Time', 'Delay Days', 'Notes', 'Request Date'].join(','),
+      // CSV Data
+      ...delayedCollections.map(rc => [
+        rc.binId,
+        rc.collectedBy ? rc.collectedBy.name : 'Unknown',
+        new Date(rc.collectedAt).toLocaleString(),
+        rc.delayDays || '',
+        rc.notes || '',
+        rc.collectionRequest ? new Date(rc.collectionRequest.createdAt).toLocaleString() : ''
+      ].join(','))
+    ].join('\n');
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', `delayed_collections_${new Date().toISOString().split('T')[0]}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const downloadCollectionsSummary = () => {
+    const collectionsToDownload = showOnlyDelayed 
+      ? finalFilteredCollections.filter(rc => rc.delayed)
+      : finalFilteredCollections;
+
+    if (collectionsToDownload.length === 0) {
+      alert('No collections to download');
+      return;
+    }
+
+    // Calculate summary statistics
+    const totalCollections = collectionsToDownload.length;
+    const delayedCollections = collectionsToDownload.filter(rc => rc.delayed).length;
+    const onTimeCollections = totalCollections - delayedCollections;
+    const avgDelayDays = delayedCollections > 0 
+      ? (collectionsToDownload.filter(rc => rc.delayed).reduce((sum, rc) => sum + (rc.delayDays || 0), 0) / delayedCollections).toFixed(2)
+      : 0;
+
+    // Group by date
+    const groupedByDate = collectionsToDownload.reduce((acc, rc) => {
+      const date = new Date(rc.collectedAt).toLocaleDateString();
+      if (!acc[date]) {
+        acc[date] = [];
+      }
+      acc[date].push(rc);
+      return acc;
+    }, {});
+
+    let reportContent = `Collections Summary Report\n`;
+    reportContent += `Generated on: ${new Date().toISOString().split('T')[0]}\n\n`;
+    
+    reportContent += `SUMMARY STATISTICS:\n`;
+    reportContent += `Total Collections: ${totalCollections}\n`;
+    reportContent += `On Time Collections: ${onTimeCollections}\n`;
+    reportContent += `Delayed Collections: ${delayedCollections}\n`;
+    reportContent += `Delay Rate: ${((delayedCollections / totalCollections) * 100).toFixed(1)}%\n`;
+    reportContent += `Average Delay (days): ${avgDelayDays}\n\n`;
+
+    reportContent += `COLLECTIONS BY DATE:\n`;
+    Object.entries(groupedByDate).forEach(([date, collections]) => {
+      const dateDelayed = collections.filter(c => c.delayed).length;
+      reportContent += `${date}: ${collections.length} collections (${dateDelayed} delayed)\n`;
+    });
+    reportContent += '\n';
+
+    reportContent += `DETAILED LIST:\n`;
+    reportContent += `Date,Bin ID,Collector,Delay,Delay Days\n`;
+    collectionsToDownload.forEach(rc => {
+      reportContent += `${new Date(rc.collectedAt).toLocaleDateString()},${rc.binId},${rc.collectedBy ? rc.collectedBy.name : 'Unknown'},${rc.delayed ? 'Delayed' : 'On Time'},${rc.delayDays || ''}\n`;
+    });
+
+    const blob = new Blob([reportContent], { type: 'text/plain;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', `collections_summary_${new Date().toISOString().split('T')[0]}.txt`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const downloadCollectionsExcel = () => {
+    const collectionsToDownload = showOnlyDelayed 
+      ? finalFilteredCollections.filter(rc => rc.delayed)
+      : finalFilteredCollections;
+
+    if (collectionsToDownload.length === 0) {
+      alert('No collections to download');
+      return;
+    }
+
+    // Create Excel-like format with multiple sheets
+    let excelContent = `Collections Report - Excel Format\n`;
+    excelContent += `Generated on: ${new Date().toISOString().split('T')[0]}\n\n`;
+    
+    // Sheet 1: All Collections
+    excelContent += `=== SHEET 1: ALL COLLECTIONS ===\n`;
+    excelContent += `Bin ID\tCollected By\tDate & Time\tDelay\tDelay Days\tNotes\tBin Status\tRequest ID\n`;
+    collectionsToDownload.forEach(rc => {
+      excelContent += `${rc.binId}\t${rc.collectedBy ? rc.collectedBy.name : 'Unknown'}\t${new Date(rc.collectedAt).toLocaleString()}\t${rc.delayed ? 'Delayed' : 'On Time'}\t${rc.delayDays || ''}\t${rc.notes || ''}\t${rc.bin?.status || ''}\t${rc.collectionRequest?.id || ''}\n`;
+    });
+    excelContent += '\n';
+
+    // Sheet 2: Delayed Collections Only
+    const delayedCollections = collectionsToDownload.filter(rc => rc.delayed);
+    if (delayedCollections.length > 0) {
+      excelContent += `=== SHEET 2: DELAYED COLLECTIONS ===\n`;
+      excelContent += `Bin ID\tCollected By\tDate & Time\tDelay Days\tNotes\tRequest Date\n`;
+      delayedCollections.forEach(rc => {
+        excelContent += `${rc.binId}\t${rc.collectedBy ? rc.collectedBy.name : 'Unknown'}\t${new Date(rc.collectedAt).toLocaleString()}\t${rc.delayDays || ''}\t${rc.notes || ''}\t${rc.collectionRequest ? new Date(rc.collectionRequest.createdAt).toLocaleString() : ''}\n`;
+      });
+      excelContent += '\n';
+    }
+
+    // Sheet 3: Summary by Collector
+    const groupedByCollector = collectionsToDownload.reduce((acc, rc) => {
+      const collectorName = rc.collectedBy ? rc.collectedBy.name : 'Unknown';
+      if (!acc[collectorName]) {
+        acc[collectorName] = [];
+      }
+      acc[collectorName].push(rc);
+      return acc;
+    }, {});
+
+    excelContent += `=== SHEET 3: SUMMARY BY COLLECTOR ===\n`;
+    excelContent += `Collector\tTotal Collections\tOn Time\tDelayed\tDelay Rate (%)\n`;
+    Object.entries(groupedByCollector).forEach(([collector, collections]) => {
+      const delayed = collections.filter(c => c.delayed).length;
+      const onTime = collections.length - delayed;
+      const delayRate = ((delayed / collections.length) * 100).toFixed(1);
+      excelContent += `${collector}\t${collections.length}\t${onTime}\t${delayed}\t${delayRate}\n`;
+    });
+
+    const blob = new Blob([excelContent], { type: 'text/plain;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', `collections_excel_format_${new Date().toISOString().split('T')[0]}.txt`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const downloadAllFilteredData = () => {
+    const hasPayments = filteredPayments.length > 0;
+    const hasCollections = finalFilteredCollections.length > 0;
+
+    if (!hasPayments && !hasCollections) {
+      alert('No data to download');
+      return;
+    }
+
+    // Create a combined report
+    let reportContent = `Admin Analytics Filtered Report\n`;
+    reportContent += `Generated on: ${new Date().toLocaleString()}\n\n`;
+    
+    // Add filter summary
+    reportContent += `FILTER SUMMARY:\n`;
+    reportContent += `Payment Date Filter: ${paymentDateFilter}\n`;
+    reportContent += `Payment Status Filter: ${paymentStatusFilter}\n`;
+    reportContent += `Payment Amount Filter: ${paymentAmountFilter}\n`;
+    reportContent += `Payment User Search: ${paymentUserFilter || 'None'}\n`;
+    reportContent += `Payment Company Search: ${paymentCompanyFilter || 'None'}\n`;
+    reportContent += `Collection Days Filter: ${daysFilter}\n`;
+    reportContent += `Collection Collector Filter: ${collectionCollectorFilter}\n`;
+    reportContent += `Collection Bin Status Filter: ${collectionBinStatusFilter}\n`;
+    reportContent += `Show Only Delayed Collections: ${showOnlyDelayed}\n\n`;
+
+    // Add payment data
+    if (hasPayments) {
+      reportContent += `PAYMENTS (${filteredPayments.length} records):\n`;
+      reportContent += `ID,Amount,Status,User,Company,Date,Reference ID,Phone Number\n`;
+      filteredPayments.forEach(p => {
+        reportContent += `${p.id},${p.amount},${p.status},${p.user ? p.user.name : ''},${p.company ? p.company.name : ''},${new Date(p.createdAt).toLocaleString()},${p.referenceId || ''},${p.phoneNumber || ''}\n`;
+      });
+      reportContent += '\n';
+    }
+
+    // Add collection data
+    if (hasCollections) {
+      const collectionsToInclude = showOnlyDelayed 
+        ? finalFilteredCollections.filter(rc => rc.delayed)
+        : finalFilteredCollections;
+
+      reportContent += `COLLECTIONS (${collectionsToInclude.length} records):\n`;
+      reportContent += `Bin ID,Collected By,Date & Time,Delay,Delay Days,Notes\n`;
+      collectionsToInclude.forEach(rc => {
+        reportContent += `${rc.binId},${rc.collectedBy ? rc.collectedBy.name : 'Unknown'},${new Date(rc.collectedAt).toLocaleString()},${rc.delayed ? 'Delayed' : 'On Time'},${rc.delayDays || ''},${rc.notes || ''}\n`;
+      });
+    }
+
+    const blob = new Blob([reportContent], { type: 'text/plain;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', `admin_analytics_filtered_report_${new Date().toISOString().split('T')[0]}.txt`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
 
   useEffect(() => {
     fetch('http://localhost:5000/analytics/report')
@@ -154,6 +515,20 @@ const Analytics = () => {
       .then(data => setPaymentReport(data))
       .catch(err => console.error('Payment report fetch error:', err));
   }, []);
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (showCollectionDownloadMenu && !event.target.closest('.relative')) {
+        setShowCollectionDownloadMenu(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showCollectionDownloadMenu]);
 
   // Prepare data for the timeline chart
   const timelineData = {
@@ -194,8 +569,72 @@ const Analytics = () => {
   // Filter recent collections by selected days
   const filteredCollections = (report?.recentCollections || []).filter(rc => {
     if (daysFilter === 'all') return true;
+    if (daysFilter === 'today') {
+      const collectedAt = new Date(rc.collectedAt);
+      const today = new Date();
+      return collectedAt.toDateString() === today.toDateString();
+    }
     const collectedAt = new Date(rc.collectedAt);
     return (now - collectedAt) / (1000 * 60 * 60 * 24) <= Number(daysFilter);
+  });
+
+  // Filter payments based on selected criteria
+  const filteredPayments = (paymentReport?.recentPayments || []).filter(payment => {
+    // Date filter
+    if (paymentDateFilter !== 'all') {
+      const paymentDate = new Date(payment.createdAt);
+      const daysDiff = Math.floor((now - paymentDate) / (1000 * 60 * 60 * 24));
+      if (paymentDateFilter === 'today' && daysDiff !== 0) return false;
+      if (paymentDateFilter === 'week' && daysDiff > 7) return false;
+      if (paymentDateFilter === 'month' && daysDiff > 30) return false;
+    }
+
+    // Status filter
+    if (paymentStatusFilter !== 'all' && payment.status !== paymentStatusFilter) {
+      return false;
+    }
+
+    // Amount filter
+    if (paymentAmountFilter !== 'all') {
+      const amount = parseFloat(payment.amount);
+      if (paymentAmountFilter === 'low' && amount >= 1000) return false;
+      if (paymentAmountFilter === 'medium' && (amount < 1000 || amount >= 5000)) return false;
+      if (paymentAmountFilter === 'high' && amount < 5000) return false;
+    }
+
+    // User filter
+    if (paymentUserFilter && payment.user && !payment.user.name.toLowerCase().includes(paymentUserFilter.toLowerCase())) {
+      return false;
+    }
+
+    // Company filter
+    if (paymentCompanyFilter && payment.company && !payment.company.name.toLowerCase().includes(paymentCompanyFilter.toLowerCase())) {
+      return false;
+    }
+
+    return true;
+  });
+
+  // Get unique collectors for collection filter
+  const uniqueCollectors = Array.from(new Set(
+    (report?.recentCollections || [])
+      .map(rc => rc.collectedBy?.name)
+      .filter(name => name)
+  )).sort();
+
+  // Filter collections by additional criteria
+  const finalFilteredCollections = filteredCollections.filter(rc => {
+    // Collector filter
+    if (collectionCollectorFilter !== 'all' && rc.collectedBy?.name !== collectionCollectorFilter) {
+      return false;
+    }
+
+    // Bin status filter (if available)
+    if (collectionBinStatusFilter !== 'all' && rc.bin?.status !== collectionBinStatusFilter) {
+      return false;
+    }
+
+    return true;
   });
 
   if (loading) return <div className="flex h-screen"><AdminSideNav /><div className="flex-1 flex items-center justify-center text-lg">Loading analytics...</div></div>;
@@ -301,7 +740,75 @@ const Analytics = () => {
           {/* Payment Report Section */}
           {paymentReport && (
             <div className="bg-white rounded-lg shadow-md p-6 mb-10">
-              <h2 className="text-2xl font-semibold text-gray-800 mb-6 flex items-center">Payment Report</h2>
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-2xl font-semibold text-gray-800 flex items-center">Payment Report</h2>
+                <div className="flex gap-2 items-center">
+                  {/* Payment Filters */}
+                  <div className="flex gap-2 items-center">
+                    <label className="text-sm text-gray-600">Date:</label>
+                    <select
+                      value={paymentDateFilter}
+                      onChange={e => setPaymentDateFilter(e.target.value)}
+                      className="px-2 py-1 rounded border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+                    >
+                      <option value="all">All Time</option>
+                      <option value="today">Today</option>
+                      <option value="week">Last 7 Days</option>
+                      <option value="month">Last 30 Days</option>
+                    </select>
+                  </div>
+                  
+                  <div className="flex gap-2 items-center">
+                    <label className="text-sm text-gray-600">Status:</label>
+                    <select
+                      value={paymentStatusFilter}
+                      onChange={e => setPaymentStatusFilter(e.target.value)}
+                      className="px-2 py-1 rounded border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+                    >
+                      <option value="all">All Status</option>
+                      <option value="PENDING">Pending</option>
+                      <option value="SUCCESS">Success</option>
+                      <option value="FAILED">Failed</option>
+                    </select>
+                  </div>
+                  
+                  <div className="flex gap-2 items-center">
+                    <label className="text-sm text-gray-600">Amount:</label>
+                    <select
+                      value={paymentAmountFilter}
+                      onChange={e => setPaymentAmountFilter(e.target.value)}
+                      className="px-2 py-1 rounded border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+                    >
+                      <option value="all">All Amounts</option>
+                      <option value="low">Low (&lt; 1,000)</option>
+                      <option value="medium">Medium (1,000 - 5,000)</option>
+                      <option value="high">High (&gt; 5,000)</option>
+                    </select>
+                  </div>
+                  
+                  <div className="flex gap-2 items-center">
+                    <label className="text-sm text-gray-600">User:</label>
+                    <input
+                      type="text"
+                      placeholder="Search user..."
+                      value={paymentUserFilter}
+                      onChange={e => setPaymentUserFilter(e.target.value)}
+                      className="px-2 py-1 rounded border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 w-32"
+                    />
+                  </div>
+                  
+                  <div className="flex gap-2 items-center">
+                    <label className="text-sm text-gray-600">Company:</label>
+                    <input
+                      type="text"
+                      placeholder="Search company..."
+                      value={paymentCompanyFilter}
+                      onChange={e => setPaymentCompanyFilter(e.target.value)}
+                      className="px-2 py-1 rounded border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 w-32"
+                    />
+                  </div>
+                </div>
+              </div>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
                 <div className="flex flex-col items-start">
                   <span className="text-gray-500 text-sm">Total Payments</span>
@@ -322,7 +829,84 @@ const Analytics = () => {
                   </ul>
                 </div>
               </div>
+              
+              {/* Filter Summary */}
+              <div className="bg-gray-50 rounded-lg p-4 mb-6">
+                <div className="flex justify-between items-center">
+                  <div className="flex gap-6">
+                    <div className="text-sm">
+                      <span className="text-gray-600">Showing:</span>
+                      <span className="font-semibold ml-1">{filteredPayments.length}</span>
+                      <span className="text-gray-600 ml-1">of {paymentReport.recentPayments?.length || 0} payments</span>
+                    </div>
+                    <div className="text-sm">
+                      <span className="text-gray-600">Collections:</span>
+                      <span className="font-semibold ml-1">{finalFilteredCollections.length}</span>
+                      <span className="text-gray-600 ml-1">of {report?.recentCollections?.length || 0} total</span>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-4">
+                    <div className="text-xs text-gray-500">
+                      {paymentDateFilter !== 'all' && `Date: ${paymentDateFilter}`}
+                      {paymentStatusFilter !== 'all' && ` | Status: ${paymentStatusFilter}`}
+                      {paymentAmountFilter !== 'all' && ` | Amount: ${paymentAmountFilter}`}
+                      {(paymentUserFilter || paymentCompanyFilter) && ` | Search: ${paymentUserFilter || paymentCompanyFilter}`}
+                    </div>
+                    <div className="flex gap-2">
+                      {filteredPayments.length > 0 && (
+                        <button
+                          onClick={downloadFilteredPayments}
+                          className="px-3 py-1 text-xs bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors"
+                          title="Download filtered payments as CSV"
+                        >
+                          📊 Payments CSV
+                        </button>
+                      )}
+                      {finalFilteredCollections.length > 0 && (
+                        <button
+                          onClick={downloadFilteredCollections}
+                          className="px-3 py-1 text-xs bg-green-500 text-white rounded hover:bg-green-600 transition-colors"
+                          title="Download filtered collections as CSV"
+                        >
+                          📊 Collections CSV
+                        </button>
+                      )}
+                      {(filteredPayments.length > 0 || finalFilteredCollections.length > 0) && (
+                        <button
+                          onClick={downloadAllFilteredData}
+                          className="px-3 py-1 text-xs bg-purple-500 text-white rounded hover:bg-purple-600 transition-colors"
+                          title="Download all filtered data as combined report"
+                        >
+                          📄 Full Report
+                        </button>
+                      )}
+                      <button
+                        onClick={clearAllFilters}
+                        className="px-3 py-1 text-xs bg-gray-200 text-gray-700 rounded hover:bg-gray-300 transition-colors"
+                      >
+                        Clear All Filters
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
               <h3 className="text-lg font-semibold text-gray-800 mb-2 mt-4">Recent Payments</h3>
+              <div className="flex justify-between items-center mb-4">
+                <span className="text-sm text-gray-600">
+                  Showing {filteredPayments.length} of {paymentReport.recentPayments?.length || 0} payments
+                </span>
+                {filteredPayments.length > 0 && (
+                  <button
+                    onClick={downloadFilteredPayments}
+                    className="px-3 py-1 text-xs bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors"
+                    title="Download filtered payments as CSV"
+                  >
+                    📊 Download CSV
+                  </button>
+                )}
+              </div>
+
               <div className="overflow-x-auto">
                 <table className="min-w-full divide-y divide-gray-200">
                   <thead className="bg-gray-50">
@@ -336,16 +920,24 @@ const Analytics = () => {
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
-                    {(paymentReport.recentPayments || []).map(p => (
-                      <tr key={p.id} className="hover:bg-gray-50 transition-colors duration-200">
-                        <td className="px-6 py-4 whitespace-nowrap font-medium text-gray-800">{p.id}</td>
-                        <td className="px-6 py-4 whitespace-nowrap text-green-700">{p.amount}</td>
-                        <td className="px-6 py-4 whitespace-nowrap text-gray-700">{p.status}</td>
-                        <td className="px-6 py-4 whitespace-nowrap text-gray-700">{p.user ? p.user.name : '-'}</td>
-                        <td className="px-6 py-4 whitespace-nowrap text-gray-700">{p.company ? p.company.name : '-'}</td>
-                        <td className="px-6 py-4 whitespace-nowrap text-gray-600">{new Date(p.createdAt).toLocaleString()}</td>
+                    {filteredPayments.length > 0 ? (
+                      filteredPayments.map(p => (
+                        <tr key={p.id} className="hover:bg-gray-50 transition-colors duration-200">
+                          <td className="px-6 py-4 whitespace-nowrap font-medium text-gray-800">{p.id}</td>
+                          <td className="px-6 py-4 whitespace-nowrap text-green-700">{p.amount}</td>
+                          <td className="px-6 py-4 whitespace-nowrap text-gray-700">{p.status}</td>
+                          <td className="px-6 py-4 whitespace-nowrap text-gray-700">{p.user ? p.user.name : '-'}</td>
+                          <td className="px-6 py-4 whitespace-nowrap text-gray-700">{p.company ? p.company.name : '-'}</td>
+                          <td className="px-6 py-4 whitespace-nowrap text-gray-600">{new Date(p.createdAt).toLocaleString()}</td>
+                        </tr>
+                      ))
+                    ) : (
+                      <tr>
+                        <td colSpan="6" className="px-6 py-4 text-center text-gray-500">
+                          No payments found matching the selected filters.
+                        </td>
                       </tr>
-                    ))}
+                    )}
                   </tbody>
                 </table>
               </div>
@@ -364,19 +956,119 @@ const Analytics = () => {
                   onChange={e => setDaysFilter(e.target.value)}
                   className="px-2 py-1 rounded border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
                 >
-                  {finalFilterOptions.map(opt => (
+                  <option value="all">All Time</option>
+                  <option value="today">Today</option>
+                  <option value="7">Last 7 Days</option>
+                  <option value="30">Last 30 Days</option>
+                  {finalFilterOptions.filter(opt => opt.value !== 'all').map(opt => (
                     <option key={opt.value} value={opt.value}>{opt.label}</option>
                   ))}
                 </select>
+                
+                <div className="flex gap-2 items-center">
+                  <label className="text-sm text-gray-600">Collector:</label>
+                  <select
+                    value={collectionCollectorFilter}
+                    onChange={e => setCollectionCollectorFilter(e.target.value)}
+                    className="px-2 py-1 rounded border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+                  >
+                    <option value="all">All Collectors</option>
+                    {uniqueCollectors.map(collector => (
+                      <option key={collector} value={collector}>{collector}</option>
+                    ))}
+                  </select>
+                </div>
+                
+                <div className="flex gap-2 items-center">
+                  <label className="text-sm text-gray-600">Bin Status:</label>
+                  <select
+                    value={collectionBinStatusFilter}
+                    onChange={e => setCollectionBinStatusFilter(e.target.value)}
+                    className="px-2 py-1 rounded border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+                  >
+                    <option value="all">All Status</option>
+                    <option value="EMPTY">Empty</option>
+                    <option value="PARTIAL">Partial</option>
+                    <option value="FULL">Full</option>
+                  </select>
+                </div>
+                
                 <button
                   className={`px-4 py-2 rounded-md text-sm font-medium transition-all duration-200 ${showOnlyDelayed ? 'bg-red-600 text-white' : 'bg-gray-200 text-gray-700'}`}
                   onClick={() => setShowOnlyDelayed(v => !v)}
                 >
                   {showOnlyDelayed ? 'Show All' : 'Show Only Delayed'}
                 </button>
+                
+                {finalFilteredCollections.length > 0 && (
+                  <div className="relative">
+                    <button
+                      onClick={() => setShowCollectionDownloadMenu(!showCollectionDownloadMenu)}
+                      className="px-3 py-1 text-xs bg-green-500 text-white rounded hover:bg-green-600 transition-colors flex items-center gap-1"
+                      title="Download collection data"
+                    >
+                      📊 Download
+                      <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                      </svg>
+                    </button>
+                    
+                    {showCollectionDownloadMenu && (
+                      <div className="absolute right-0 mt-1 w-48 bg-white border border-gray-200 rounded-md shadow-lg z-50">
+                        <div className="py-1">
+                          <button
+                            onClick={() => {
+                              downloadFilteredCollections();
+                              setShowCollectionDownloadMenu(false);
+                            }}
+                            className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                          >
+                            📄 All Collections (CSV)
+                          </button>
+                          <button
+                            onClick={() => {
+                              downloadDelayedCollectionsOnly();
+                              setShowCollectionDownloadMenu(false);
+                            }}
+                            className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                          >
+                            ⚠️ Delayed Only (CSV)
+                          </button>
+                          <button
+                            onClick={() => {
+                              downloadCollectionsByCollector();
+                              setShowCollectionDownloadMenu(false);
+                            }}
+                            className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                          >
+                            👥 By Collector (Report)
+                          </button>
+                          <button
+                            onClick={() => {
+                              downloadCollectionsSummary();
+                              setShowCollectionDownloadMenu(false);
+                            }}
+                            className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                          >
+                            📊 Summary Report
+                          </button>
+                          <button
+                            onClick={() => {
+                              downloadCollectionsExcel();
+                              setShowCollectionDownloadMenu(false);
+                            }}
+                            className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                          >
+                            📈 Excel Format (Multi-sheet)
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
-            {filteredCollections && filteredCollections.length > 0 ? (
+            {finalFilteredCollections && finalFilteredCollections.length > 0 ? (
               <div className="overflow-x-auto">
                 <table className="min-w-full divide-y divide-gray-200">
                   <thead className="bg-gray-50">
@@ -389,8 +1081,8 @@ const Analytics = () => {
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
                     {(showOnlyDelayed
-                      ? filteredCollections.filter(rc => rc.delayed)
-                      : filteredCollections
+                      ? finalFilteredCollections.filter(rc => rc.delayed)
+                      : finalFilteredCollections
                     ).map(rc => (
                       <tr key={rc.id} className={`hover:bg-gray-50 transition-colors duration-200 ${rc.delayed ? 'bg-red-50' : ''}`}>
                         <td className="px-6 py-4 whitespace-nowrap font-medium text-gray-800">#{rc.binId}</td>

@@ -12,11 +12,25 @@ const generateReference = () => `WMG-${Date.now()}-${crypto.randomBytes(4).toStr
 
 exports.initiatePayment = async (req, res, next) => {
     try {
-        const { amount, phoneNumber, description } = req.body;
+        const { amount, phoneNumber, description, companyId } = req.body;
         const { id: userId } = req.user;
 
         if (!amount || !phoneNumber) {
             return next(new AppError('Amount and phone number are required', 400));
+        }
+        if (!companyId) {
+            return next(new AppError('companyId is required for each payment', 400));
+        }
+        // Check if company exists and is approved
+        const company = await prisma.user.findFirst({
+            where: {
+                id: parseInt(companyId),
+                role: 'COMPANY',
+                approvalStatus: 'APPROVED'
+            }
+        });
+        if (!company) {
+            return next(new AppError('Invalid companyId or company not approved', 400));
         }
 
         const tx_ref = generateReference();
@@ -51,10 +65,12 @@ exports.initiatePayment = async (req, res, next) => {
         const payment = await prisma.payment.create({
             data: {
                 userId,
+                companyId: parseInt(companyId),
                 amount: parseFloat(amount),
                 status: 'PENDING',
                 referenceId: tx_ref, // Use our internal reference
                 providerReference: response.data.ref, // Use Paypack transaction ref
+                phoneNumber: phoneNumber, // Save the phone number used for payment
             }
         });
 
@@ -64,6 +80,7 @@ exports.initiatePayment = async (req, res, next) => {
                 id: payment.id,
                 referenceId: tx_ref,
                 status: 'PENDING',
+                amount: payment.amount
             }
         });
     } catch (error) {
@@ -179,7 +196,8 @@ exports.testPayment = async (req, res) => {
                 userId: req.user.id,
                 amount: parseFloat(amount),
                 status: 'PENDING',
-                referenceId: `TEST-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
+                referenceId: `TEST-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+                phoneNumber: phoneNumber, // Save the phone number used for payment
             }
         });
 
@@ -246,8 +264,18 @@ exports.getCompanyPayments = async (req, res, next) => {
         }
         const companyId = req.user.id;
         const payments = await prisma.payment.findMany({
-            where: { userId: companyId },
-            orderBy: { createdAt: 'desc' }
+            where: { companyId: companyId },
+            orderBy: { createdAt: 'desc' },
+            include: {
+                user: {
+                    select: {
+                        id: true,
+                        name: true,
+                        email: true,
+                        phoneNumber: true
+                    }
+                }
+            }
         });
         res.status(200).json({ payments });
     } catch (error) {

@@ -28,7 +28,7 @@ router.post('/collect-user-bin/:userId', authenticateToken, userController.colle
 // Admin only routes
 router.get('/pending-companies', authenticateToken, isAdmin, userController.getPendingCompanies);
 router.post('/approve-company', authenticateToken, isAdmin, userController.approveCompany);
-router.get('/companies', authenticateToken, isAdmin, userController.getAllCompanies);
+router.get('/companies', authenticateToken, userController.getAllCompanies);
 router.delete('/delete/:userId', authenticateToken, isAdmin, userController.deleteUser);
 
 // Test email configuration route
