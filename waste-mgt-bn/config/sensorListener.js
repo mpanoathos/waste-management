@@ -19,8 +19,9 @@ parser.on("data", async (data) => {
     const parsed = JSON.parse(data.trim());
     console.log("Received:", parsed);
 
+    const apiUrl = process.env.API_URL || `http://localhost:${process.env.PORT || 5000}`;
     const response = await axios.put(
-      `http://localhost:${process.env.PORT || 5000}/api/bins/1/sensor-update`,
+      `${apiUrl}/api/bins/1/sensor-update`,
       parsed
     );
     console.log("Sent to server:", response.status);
