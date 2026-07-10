@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+﻿import React, { useEffect, useState } from 'react';
 import AdminSideNav from './SideNav/adminSideNav';
 import { toast } from 'react-toastify';
 
@@ -12,7 +12,7 @@ const AdminReportThreads = () => {
     setLoading(true);
     const token = localStorage.getItem('token');
     try {
-      const response = await fetch('http://localhost:5000/report-thread/admin', {
+      const response = await fetch(`${process.env.REACT_APP_API_URL}/report-thread/admin`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       const data = await response.json();
@@ -76,7 +76,7 @@ const AdminReportChat = ({ thread, onClose }) => {
     setLoading(true);
     const token = localStorage.getItem('token');
     try {
-      const response = await fetch(`http://localhost:5000/report-thread/${thread.id}/messages`, {
+      const response = await fetch(`${process.env.REACT_APP_API_URL}/report-thread/${thread.id}/messages`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       const data = await response.json();
@@ -94,7 +94,7 @@ const AdminReportChat = ({ thread, onClose }) => {
     e.preventDefault();
     const token = localStorage.getItem('token');
     try {
-      const response = await fetch(`http://localhost:5000/report-thread/${thread.id}/message`, {
+      const response = await fetch(`${process.env.REACT_APP_API_URL}/report-thread/${thread.id}/message`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -117,7 +117,7 @@ const AdminReportChat = ({ thread, onClose }) => {
   return (
     <div className="fixed inset-0 bg-black bg-opacity-30 flex items-center justify-center z-50">
       <div className="bg-white rounded shadow-lg w-full max-w-lg p-6 relative">
-        <button className="absolute top-2 right-2 text-gray-500" onClick={onClose}>✕</button>
+        <button className="absolute top-2 right-2 text-gray-500" onClick={onClose}>âœ•</button>
         <h2 className="text-xl font-bold mb-4">Thread: {thread.subject}</h2>
         <div className="h-64 overflow-y-auto border rounded p-2 mb-4 bg-gray-50">
           {loading ? (

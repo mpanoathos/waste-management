@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+﻿import { useEffect, useState } from 'react';
 import CompanySideNav from "./SideNav/CompanySideNav";
 import { toast } from 'react-toastify';
 import LoadingSpinner from '../components/LoadingSpinner';
@@ -142,7 +142,7 @@ const CompanyCollectionHistory = () => {
         try {
             setLoading(true);
             const token = localStorage.getItem('token');
-            const response = await fetch('http://localhost:5000/user/company-collection-history', {
+            const response = await fetch(`${process.env.REACT_APP_API_URL}/user/company-collection-history`, {
                 headers: {
                     Authorization: `Bearer ${token}`
                 }

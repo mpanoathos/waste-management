@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+﻿import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom'; // Import useNavigate
 import SideNav from './SideNav/SideNav';
 import { isAuthenticated } from '../utils/auth'; // Import the auth utility
@@ -32,7 +32,7 @@ ChartJS.register(
   ArcElement
 );
 
-const socket = io('http://localhost:5000');
+const socket = io(process.env.REACT_APP_API_URL);
 
 const Dashboard = () => {
   const [binData, setBinData] = useState([]);
@@ -56,7 +56,7 @@ const Dashboard = () => {
   const fetchBins = async () => {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('http://localhost:5000/bin/user-bins', {
+      const response = await fetch(`${process.env.REACT_APP_API_URL}/bin/user-bins`, {
         headers: { 
           Authorization: `Bearer ${token}` 
         },
@@ -90,7 +90,7 @@ const Dashboard = () => {
   const fetchRecentCollections = async () => {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('http://localhost:5000/collection/recent', {
+      const response = await fetch(`${process.env.REACT_APP_API_URL}/collection/recent`, {
         headers: {
           Authorization: `Bearer ${token}`
         }
@@ -116,7 +116,7 @@ const Dashboard = () => {
   const fetchUpcomingPayments = async () => {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('http://localhost:5000/payment/upcoming', {
+      const response = await fetch(`${process.env.REACT_APP_API_URL}/payment/upcoming`, {
         headers: {
           Authorization: `Bearer ${token}`
         }
@@ -144,7 +144,7 @@ const Dashboard = () => {
       const token = localStorage.getItem('token');
       console.log('Fetching analytics with token:', token ? 'Token present' : 'No token');
       
-      const response = await fetch('http://localhost:5000/api/analytics', {
+      const response = await fetch(`${process.env.REACT_APP_API_URL}/api/analytics`, {
         headers: {
           Authorization: `Bearer ${token}`
         }
@@ -184,7 +184,7 @@ const Dashboard = () => {
     const fetchProfile = async () => {
       try {
         const token = localStorage.getItem('token');
-        const response = await fetch('http://localhost:5000/user/profile', {
+        const response = await fetch(`${process.env.REACT_APP_API_URL}/user/profile`, {
           method: 'GET',
           headers: {
             Authorization: `Bearer ${token}`,
@@ -213,7 +213,7 @@ const Dashboard = () => {
   const handleCreateBin = async () => {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('http://localhost:5000/bin', {
+      const response = await fetch(`${process.env.REACT_APP_API_URL}/bin`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

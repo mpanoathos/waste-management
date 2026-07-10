@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+﻿import React, { useState } from 'react';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import { FaArrowLeft, FaLock, FaEye, FaEyeSlash } from 'react-icons/fa';
@@ -53,7 +53,7 @@ const ResetPassword = () => {
 
         setIsLoading(true);
         try {
-            const response = await fetch('http://localhost:5000/user/reset-password', {
+            const response = await fetch(`${process.env.REACT_APP_API_URL}/user/reset-password`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',

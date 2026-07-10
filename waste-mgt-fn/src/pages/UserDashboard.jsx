@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import UserSideNav from './SideNav/userSideNav';
 import Chatbot from '../components/Chatbot';
 import { FaUser, FaBuilding, FaEnvelope, FaPhone, FaMapMarkerAlt } from 'react-icons/fa';
@@ -11,7 +11,7 @@ const UserDashboard = () => {
         const fetchUserData = async () => {
             try {
                 const token = localStorage.getItem('token');
-                const response = await fetch('http://localhost:5000/user/profile', {
+                const response = await fetch(`${process.env.REACT_APP_API_URL}/user/profile`, {
                     headers: {
                         Authorization: `Bearer ${token}`
                     }

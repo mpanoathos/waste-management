@@ -1,3 +1,4 @@
+require("dotenv").config();
 const SerialPort = require("serialport").SerialPort;
 const Readline = require("@serialport/parser-readline");
 const axios = require("axios");
@@ -19,7 +20,7 @@ parser.on("data", async (data) => {
     console.log("Received:", parsed);
 
     const response = await axios.put(
-      "http://localhost:5000/api/bins/1/sensor-update", 
+      `http://localhost:${process.env.PORT || 5000}/api/bins/1/sensor-update`,
       parsed
     );
     console.log("Sent to server:", response.status);

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import AdminSideNav from './SideNav/adminSideNav';
 import { toast } from 'react-toastify';
 import { FaCheck, FaTimes, FaSpinner, FaBuilding, FaEnvelope, FaPhone, FaMapMarkerAlt, FaEye } from 'react-icons/fa';
@@ -21,7 +21,7 @@ const CompanyManagement = () => {
         try {
             setLoading(true);
             const token = localStorage.getItem('token');
-            const response = await fetch('http://localhost:5000/user/companies', {
+            const response = await fetch(`${process.env.REACT_APP_API_URL}/user/companies`, {
                 headers: {
                     Authorization: `Bearer ${token}`
                 }
@@ -43,7 +43,7 @@ const CompanyManagement = () => {
     const handleApproval = async (userId, status) => {
         try {
             const token = localStorage.getItem('token');
-            const response = await fetch('http://localhost:5000/user/approve-company', {
+            const response = await fetch(`${process.env.REACT_APP_API_URL}/user/approve-company`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',

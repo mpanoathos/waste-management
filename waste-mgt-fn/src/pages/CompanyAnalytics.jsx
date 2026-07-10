@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+﻿import React, { useEffect, useState } from 'react';
 import LoadingSpinner from '../components/LoadingSpinner';
 import CompanySideNav from './SideNav/CompanySideNav';
 import { toast } from 'react-toastify';
@@ -37,7 +37,7 @@ const CompanyAnalytics = () => {
       setLoading(true);
       try {
         const token = localStorage.getItem('token');
-        const res = await fetch('http://localhost:5000/analytics/company-analytics', {
+        const res = await fetch(`${process.env.REACT_APP_API_URL}/analytics/company-analytics`, {
           headers: { Authorization: `Bearer ${token}` }
         });
         if (!res.ok) throw new Error('Failed to fetch analytics');

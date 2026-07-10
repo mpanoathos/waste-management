@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+﻿import React, { useEffect, useState } from 'react';
 import { fetchUnassignedRoutes, assignRouteToCompany, fetchAllRoutes, fetchAllCompanies } from '../utils/api';
 import AdminSideNav from '../pages/SideNav/adminSideNav';
 import axios from 'axios';
@@ -80,7 +80,7 @@ const RouteManagement = ({ token }) => {
       setCreatingRoute(true);
       
       // Create route using the API
-      const response = await fetch('http://localhost:5000/api/routes/', {
+      const response = await fetch(`${process.env.REACT_APP_API_URL}/api/routes/`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -158,7 +158,7 @@ const RouteManagement = ({ token }) => {
     setMessage('');
     try {
       // Use backend proxy endpoint for geocoding
-      const response = await axios.get('http://localhost:5000/api/geocode', {
+      const response = await axios.get(`${process.env.REACT_APP_API_URL}/api/geocode`, {
         params: { address }
       });
       if (response.data && response.data.length > 0) {

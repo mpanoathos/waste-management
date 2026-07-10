@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import CompanySideNav from './SideNav/CompanySideNav';
 import { useNavigate } from 'react-router-dom';
 import { isAuthenticated } from '../utils/auth';
@@ -102,7 +102,7 @@ const CompanyDashboard = () => {
   const fetchProfile = async () => {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('http://localhost:5000/user/profile', {
+      const response = await fetch(`${process.env.REACT_APP_API_URL}/user/profile`, {
         method: 'GET',
         headers: {
           Authorization: `Bearer ${token}`,
@@ -124,7 +124,7 @@ const CompanyDashboard = () => {
   const fetchAnalyticsData = async () => {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('http://localhost:5000/api/analytics', {
+      const response = await fetch(`${process.env.REACT_APP_API_URL}/api/analytics`, {
         headers: {
           Authorization: `Bearer ${token}`
         }
@@ -223,7 +223,7 @@ const CompanyDashboard = () => {
     setPaymentLoading(true);
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('http://localhost:5000/api/payments/initiate', {
+      const response = await fetch(`${process.env.REACT_APP_API_URL}/api/payments/initiate`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

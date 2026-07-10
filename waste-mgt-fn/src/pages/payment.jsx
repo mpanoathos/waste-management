@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import axios from 'axios';
@@ -152,7 +152,7 @@ const Payment = () => {
 
     const fetchPaymentHistory = async () => {
         try {
-            const response = await axios.get('http://localhost:5000/api/payments/history', {
+            const response = await axios.get(`${process.env.REACT_APP_API_URL}/api/payments/history`, {
                 headers: {
                     Authorization: `Bearer ${localStorage.getItem('token')}`
                 }
@@ -167,7 +167,7 @@ const Payment = () => {
     const fetchCompanies = async () => {
         try {
             const token = localStorage.getItem('token');
-            const response = await axios.get('http://localhost:5000/user/companies', {
+            const response = await axios.get(`${process.env.REACT_APP_API_URL}/user/companies`, {
                 headers: { Authorization: `Bearer ${token}` }
             });
             setCompanies(response.data.companies || []);
@@ -197,7 +197,7 @@ const Payment = () => {
 
         try {
             const response = await axios.post(
-                'http://localhost:5000/api/payments/initiate',
+                `${process.env.REACT_APP_API_URL}/api/payments/initiate`,
                 { ...formData, companyId: selectedCompanyId },
                 {
                     headers: {
@@ -488,7 +488,7 @@ const CompanyPayments = () => {
   const fetchPaymentHistory = async () => {
     setLoading(true);
     try {
-      const response = await axios.get('http://localhost:5000/api/payments/company-history', {
+      const response = await axios.get(`${process.env.REACT_APP_API_URL}/api/payments/company-history`, {
         headers: {
           Authorization: `Bearer ${localStorage.getItem('token')}`
         }
@@ -514,7 +514,7 @@ const CompanyPayments = () => {
     setPaymentLoading(true);
     try {
       const token = localStorage.getItem('token');
-      const response = await axios.post('http://localhost:5000/api/payments/initiate', paymentForm, {
+      const response = await axios.post(`${process.env.REACT_APP_API_URL}/api/payments/initiate`, paymentForm, {
         headers: {
           Authorization: `Bearer ${token}`
         }

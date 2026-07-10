@@ -1,4 +1,4 @@
-import { useState } from "react";
+﻿import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css"; // Import toastify CSS
@@ -21,7 +21,7 @@ const Signup = () => {
 
     // Geocode address using backend proxy
     async function geocodeAddress(address) {
-        const res = await fetch('http://localhost:5000/user/geocode', {
+        const res = await fetch(`${process.env.REACT_APP_API_URL}/user/geocode`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ address })
@@ -63,7 +63,7 @@ const Signup = () => {
                 })
             };
 
-            const res = await fetch("http://localhost:5000/user/register", {
+            const res = await fetch(`${process.env.REACT_APP_API_URL}/user/register`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify(userData),

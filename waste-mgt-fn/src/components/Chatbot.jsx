@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+﻿import React, { useState, useRef, useEffect } from 'react';
 import { FaPaperPlane, FaRobot, FaUser, FaSpinner } from 'react-icons/fa';
 
 const Chatbot = () => {
@@ -19,7 +19,7 @@ const Chatbot = () => {
         const fetchChatHistory = async () => {
             try {
                 const token = localStorage.getItem('token');
-                const response = await fetch('http://localhost:5000/chat/history', {
+                const response = await fetch(`${process.env.REACT_APP_API_URL}/chat/history`, {
                     headers: {
                         'Authorization': `Bearer ${token}`
                     }
@@ -60,7 +60,7 @@ const Chatbot = () => {
 
         try {
             const token = localStorage.getItem('token');
-            const response = await fetch('http://localhost:5000/chat', {
+            const response = await fetch(`${process.env.REACT_APP_API_URL}/chat`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',

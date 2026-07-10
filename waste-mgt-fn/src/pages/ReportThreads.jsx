@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+﻿import React, { useEffect, useState } from 'react';
 import { toast } from 'react-toastify';
 import SideNav from './SideNav/SideNav';
 
@@ -15,7 +15,7 @@ const ReportThreads = () => {
     setLoading(true);
     const token = localStorage.getItem('token');
     try {
-      const response = await fetch('http://localhost:5000/report-thread/user', {
+      const response = await fetch(`${process.env.REACT_APP_API_URL}/report-thread/user`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       const data = await response.json();
@@ -37,7 +37,7 @@ const ReportThreads = () => {
     e.preventDefault();
     const token = localStorage.getItem('token');
     try {
-      const response = await fetch('http://localhost:5000/report-thread', {
+      const response = await fetch(`${process.env.REACT_APP_API_URL}/report-thread`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -154,7 +154,7 @@ const ReportChat = ({ thread, onClose }) => {
     setLoading(true);
     const token = localStorage.getItem('token');
     try {
-      const response = await fetch(`http://localhost:5000/report-thread/${thread.id}/messages`, {
+      const response = await fetch(`${process.env.REACT_APP_API_URL}/report-thread/${thread.id}/messages`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       const data = await response.json();
@@ -177,7 +177,7 @@ const ReportChat = ({ thread, onClose }) => {
     e.preventDefault();
     const token = localStorage.getItem('token');
     try {
-      const response = await fetch(`http://localhost:5000/report-thread/${thread.id}/message`, {
+      const response = await fetch(`${process.env.REACT_APP_API_URL}/report-thread/${thread.id}/message`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -205,7 +205,7 @@ const ReportChat = ({ thread, onClose }) => {
           onClick={onClose}
           className="text-gray-500 hover:text-gray-700"
         >
-          ✕
+          âœ•
         </button>
       </div>
       <div className="flex-1 overflow-y-auto p-4 space-y-4">

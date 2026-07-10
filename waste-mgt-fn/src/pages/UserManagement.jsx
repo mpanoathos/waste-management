@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import AdminSideNav from './SideNav/adminSideNav';
@@ -23,7 +23,7 @@ const UserManagement = () => {
     try {
       setLoading(true);
       const token = localStorage.getItem('token');
-      const response = await axios.get('http://localhost:5000/user/user-management', {
+      const response = await axios.get(`${process.env.REACT_APP_API_URL}/user/user-management`, {
         headers: {
           Authorization: `Bearer ${token}`
         }
@@ -48,7 +48,7 @@ const UserManagement = () => {
   const handleApproveCompany = async (userId) => {
     try {
       const token = localStorage.getItem('token');
-      await axios.post('http://localhost:5000/user/approve-company', 
+      await axios.post(`${process.env.REACT_APP_API_URL}/user/approve-company`, 
         { userId, status: 'APPROVED' },
         {
           headers: {
@@ -66,7 +66,7 @@ const UserManagement = () => {
   const handleRejectCompany = async (userId) => {
     try {
       const token = localStorage.getItem('token');
-      await axios.post('http://localhost:5000/user/approve-company', 
+      await axios.post(`${process.env.REACT_APP_API_URL}/user/approve-company`, 
         { userId, status: 'REJECTED' },
         {
           headers: {
@@ -85,7 +85,7 @@ const UserManagement = () => {
     if (!userToDelete) return;
     try {
       const token = localStorage.getItem('token');
-      await axios.delete(`http://localhost:5000/user/delete/${userToDelete}`, {
+      await axios.delete(`${process.env.REACT_APP_API_URL}/user/delete/${userToDelete}`, {
         headers: {
           Authorization: `Bearer ${token}`
         }
@@ -156,7 +156,7 @@ const UserManagement = () => {
         <AdminSideNav />
         <div className="flex-1 flex items-center justify-center">
           <div className="text-center">
-            <div className="text-red-600 text-xl mb-4">⚠️</div>
+            <div className="text-red-600 text-xl mb-4">âš ï¸</div>
             <p className="text-gray-600">{error}</p>
             <button 
               onClick={() => navigate('/admin-dashboard')}

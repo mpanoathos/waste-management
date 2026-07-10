@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+﻿import { useEffect, useState } from 'react';
 import CompanySideNav from "./SideNav/CompanySideNav";
 import { toast } from 'react-toastify';
 import { fetchUsersForBinManagement, collectBin } from '../utils/api';
@@ -12,7 +12,7 @@ const BinManagement = () => {
     const [socketConnected, setSocketConnected] = useState(false);
 
     // Initialize socket connection
-    const socket = io('http://localhost:5000');
+    const socket = io(process.env.REACT_APP_API_URL);
 
     useEffect(() => {
         const fetchAllUsers = async () => {

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import CompanySideNav from './SideNav/CompanySideNav';
 import { fetchCompanyPayments } from '../utils/api';
 import { PDFDownloadLink, Document, Page, Text, View, StyleSheet } from '@react-pdf/renderer';
@@ -81,7 +81,7 @@ const CompanyPayments = () => {
     setPaymentLoading(true);
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('http://localhost:5000/api/payments/initiate', {
+      const response = await fetch(`${process.env.REACT_APP_API_URL}/api/payments/initiate`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

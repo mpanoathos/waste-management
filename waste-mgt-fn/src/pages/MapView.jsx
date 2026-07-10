@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+﻿import React, { useState, useEffect, useMemo } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, Polyline, Tooltip } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -119,7 +119,7 @@ const MapView = () => {
 
   const checkBackendHealth = async () => {
     try {
-      await axios.get('http://localhost:5000/health', { timeout: 5000 });
+      await axios.get(`${process.env.REACT_APP_API_URL}/health`, { timeout: 5000 });
     } catch (error) {
       throw new Error('Backend server is not responding');
     }
@@ -147,7 +147,7 @@ const MapView = () => {
       // Fetch bins and routes in parallel for better performance
       const [binsResponse, routesResponse] = await Promise.allSettled([
         Promise.race([
-          axios.get('http://localhost:5000/bin', {
+          axios.get(`${process.env.REACT_APP_API_URL}/bin`, {
             headers: {  
               Authorization: `Bearer ${token}`
             }
@@ -245,7 +245,7 @@ const MapView = () => {
       const token = localStorage.getItem('token');
       
       // Use the new backend endpoint to update coordinates
-      const response = await fetch('http://localhost:5000/bin/update-coordinates', {
+      const response = await fetch(`${process.env.REACT_APP_API_URL}/bin/update-coordinates`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -304,7 +304,7 @@ const MapView = () => {
           ) : error ? (
             <div className="absolute inset-0 flex items-center justify-center bg-gray-100 bg-opacity-75 z-10">
               <div className="text-center bg-white p-6 rounded-lg shadow-lg max-w-md">
-                <div className="text-red-500 text-4xl mb-4">⚠️</div>
+                <div className="text-red-500 text-4xl mb-4">âš ï¸</div>
                 <h3 className="text-lg font-semibold text-gray-800 mb-2">Error Loading Map</h3>
                 <p className="text-gray-600 mb-4">{error}</p>
                 <button

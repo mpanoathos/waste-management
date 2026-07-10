@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import AdminSideNav from './SideNav/adminSideNav';
 import { fetchCompanyAlerts, resolveAlert } from '../utils/api';
 
@@ -17,7 +17,7 @@ const AdminDashboard = () => {
 
     const fetchPendingCompanies = async () => {
         try {
-            const response = await fetch('http://localhost:5000/admin/pending-companies', {
+            const response = await fetch(`${process.env.REACT_APP_API_URL}/admin/pending-companies`, {
                 headers: {
                     'Authorization': `Bearer ${localStorage.getItem('token')}`
                 }
@@ -50,7 +50,7 @@ const AdminDashboard = () => {
 
     const handleApproveCompany = async (companyId) => {
         try {
-            const response = await fetch(`http://localhost:5000/admin/approve-company/${companyId}`, {
+            const response = await fetch(`${process.env.REACT_APP_API_URL}/admin/approve-company/${companyId}`, {
                 method: 'POST',
                 headers: {
                     'Authorization': `Bearer ${localStorage.getItem('token')}`,

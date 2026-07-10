@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+﻿import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
@@ -28,7 +28,7 @@ const Login = () => {
         setError("");
         setIsLoading(true);
         try {
-            const res = await fetch("http://localhost:5000/user/login", {
+            const res = await fetch(`${process.env.REACT_APP_API_URL}/user/login`, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
@@ -67,7 +67,7 @@ const Login = () => {
     const handleForgotPassword = async (event) => {
         event.preventDefault();
         try {
-            const res = await fetch("http://localhost:5000/user/forgot-password", {
+            const res = await fetch(`${process.env.REACT_APP_API_URL}/user/forgot-password`, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",

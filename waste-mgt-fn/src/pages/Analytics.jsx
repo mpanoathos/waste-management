@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+﻿import React, { useEffect, useState } from 'react';
 import AdminSideNav from './SideNav/adminSideNav';
 import { FaTrash, FaUsers, FaBoxOpen, FaHistory, FaChartPie, FaUserTie, FaDownload, FaFilePdf } from 'react-icons/fa';
 import { PDFDownloadLink, Document, Page, Text, View, StyleSheet } from '@react-pdf/renderer';
@@ -480,7 +480,7 @@ const Analytics = () => {
   };
 
   useEffect(() => {
-    fetch('http://localhost:5000/analytics/report')
+    fetch(`${process.env.REACT_APP_API_URL}/analytics/report`)
       .then(res => res.json())
       .then(data => {
         // Ensure all required arrays exist with default values
@@ -506,7 +506,7 @@ const Analytics = () => {
         setLoading(false);
       });
     // Fetch payment report
-    fetch('http://localhost:5000/api/payments/admin-report', {
+    fetch(`${process.env.REACT_APP_API_URL}/api/payments/admin-report`, {
       headers: {
         'Authorization': `Bearer ${localStorage.getItem('token')}`
       }
@@ -859,7 +859,7 @@ const Analytics = () => {
                           className="px-3 py-1 text-xs bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors"
                           title="Download filtered payments as CSV"
                         >
-                          📊 Payments CSV
+                          ðŸ“Š Payments CSV
                         </button>
                       )}
                       {finalFilteredCollections.length > 0 && (
@@ -868,7 +868,7 @@ const Analytics = () => {
                           className="px-3 py-1 text-xs bg-green-500 text-white rounded hover:bg-green-600 transition-colors"
                           title="Download filtered collections as CSV"
                         >
-                          📊 Collections CSV
+                          ðŸ“Š Collections CSV
                         </button>
                       )}
                       {(filteredPayments.length > 0 || finalFilteredCollections.length > 0) && (
@@ -877,7 +877,7 @@ const Analytics = () => {
                           className="px-3 py-1 text-xs bg-purple-500 text-white rounded hover:bg-purple-600 transition-colors"
                           title="Download all filtered data as combined report"
                         >
-                          📄 Full Report
+                          ðŸ“„ Full Report
                         </button>
                       )}
                       <button
@@ -902,7 +902,7 @@ const Analytics = () => {
                     className="px-3 py-1 text-xs bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors"
                     title="Download filtered payments as CSV"
                   >
-                    📊 Download CSV
+                    ðŸ“Š Download CSV
                   </button>
                 )}
               </div>
@@ -1007,7 +1007,7 @@ const Analytics = () => {
                       className="px-3 py-1 text-xs bg-green-500 text-white rounded hover:bg-green-600 transition-colors flex items-center gap-1"
                       title="Download collection data"
                     >
-                      📊 Download
+                      ðŸ“Š Download
                       <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                       </svg>
@@ -1023,7 +1023,7 @@ const Analytics = () => {
                             }}
                             className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                           >
-                            📄 All Collections (CSV)
+                            ðŸ“„ All Collections (CSV)
                           </button>
                           <button
                             onClick={() => {
@@ -1032,7 +1032,7 @@ const Analytics = () => {
                             }}
                             className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                           >
-                            ⚠️ Delayed Only (CSV)
+                            âš ï¸ Delayed Only (CSV)
                           </button>
                           <button
                             onClick={() => {
@@ -1041,7 +1041,7 @@ const Analytics = () => {
                             }}
                             className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                           >
-                            👥 By Collector (Report)
+                            ðŸ‘¥ By Collector (Report)
                           </button>
                           <button
                             onClick={() => {
@@ -1050,7 +1050,7 @@ const Analytics = () => {
                             }}
                             className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                           >
-                            📊 Summary Report
+                            ðŸ“Š Summary Report
                           </button>
                           <button
                             onClick={() => {
@@ -1059,7 +1059,7 @@ const Analytics = () => {
                             }}
                             className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                           >
-                            📈 Excel Format (Multi-sheet)
+                            ðŸ“ˆ Excel Format (Multi-sheet)
                           </button>
                         </div>
                       </div>

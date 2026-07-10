@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import SideNav from './SideNav/SideNav';
 import { useNavigate } from 'react-router-dom';
 import { isAuthenticated } from '../utils/auth';
@@ -6,7 +6,7 @@ import { FaTrash, FaMapMarkerAlt, FaClock, FaExclamationTriangle, FaCheckCircle,
 import { io } from 'socket.io-client';
 import { toast } from 'react-toastify';
 
-const socket = io('http://localhost:5000');
+const socket = io(process.env.REACT_APP_API_URL);
 
 const BinStatus = () => {
   const [bin, setBin] = useState(null);
@@ -19,7 +19,7 @@ const BinStatus = () => {
     try {
       setLoading(true);
       const token = localStorage.getItem('token');
-      const response = await fetch('http://localhost:5000/bin/user-bins', {
+      const response = await fetch(`${process.env.REACT_APP_API_URL}/bin/user-bins`, {
         headers: { 
           Authorization: `Bearer ${token}` 
         },
@@ -47,7 +47,7 @@ const BinStatus = () => {
   const checkPendingRequest = async (binId) => {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`http://localhost:5000/bin/${binId}/pending-request`, {
+      const response = await fetch(`${process.env.REACT_APP_API_URL}/bin/${binId}/pending-request`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       const data = await response.json();
@@ -118,7 +118,7 @@ const BinStatus = () => {
   const handleAlertCompany = async () => {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`http://localhost:5000/bin/${bin.id}/alert-company`, {
+      const response = await fetch(`${process.env.REACT_APP_API_URL}/bin/${bin.id}/alert-company`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
