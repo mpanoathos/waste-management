@@ -160,7 +160,7 @@ model Alert {
   binId     Int?
   bin       Bin?     @relation(fields: [binId], references: [id])
   companyId Int?
-  company   User     @relation("CompanyAlerts", fields: [companyId], references: [id])
+  company   User?    @relation("CompanyAlerts", fields: [companyId], references: [id])
   type      String
   message   String
   priority  String

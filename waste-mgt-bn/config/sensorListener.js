@@ -7,6 +7,10 @@ const port = new SerialPort({
   baudRate: 9600,
 });
 
+port.on("error", (error) => {
+  console.error("Sensor serial port error:", error.message);
+});
+
 const parser = port.pipe(new Readline({ delimiter: "\n" }));
 
 parser.on("data", async (data) => {

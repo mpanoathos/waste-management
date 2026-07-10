@@ -4,6 +4,11 @@ const prisma = new PrismaClient();
 
 function setupSensor(io) {
   const serialPort = new SerialPort({ path: 'COM3', baudRate: 9600 });
+
+  serialPort.on('error', (err) => {
+    console.error('Sensor serial port error:', err.message);
+  });
+
   const parser = serialPort.pipe(new ReadlineParser({ delimiter: '\n' }));
 
   parser.on('data', async (data) => {
